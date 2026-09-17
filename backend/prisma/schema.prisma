@@ -1,0 +1,337 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPING
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  VNPAY
+  MOMO
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum ComponentType {
+  CPU
+  GPU
+  MAINBOARD
+  RAM
+  SSD
+  HDD
+  PSU
+  CASE
+  COOLER
+}
+
+model User {
+  id        String    @id @default(cuid())
+  name      String?
+  email     String    @unique
+  password  String
+  phone     String?
+  role      Role      @default(USER)
+  addresses Address[]
+  carts     Cart[]
+  orders    Order[]
+  reviews   Review[]
+  pcBuilds  PCBuild[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Address {
+  id            String   @id @default(cuid())
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String
+  recipientName String
+  phone         String
+  province      String
+  district      String
+  ward          String
+  detail        String
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  description String?
+  image       String?
+  parent      Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  parentId    String?
+  children    Category[] @relation("CategoryToCategory")
+  products    Product[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Brand {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  logo        String?
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([name, slug])
+}
+
+model Product {
+  id             String                 @id @default(cuid())
+  name           String
+  slug           String                 @unique
+  description    String?
+  price          Int
+  salePrice      Int?
+  stock          Int
+  sku            String                 @unique
+  category       Category?              @relation(fields: [categoryId], references: [id])
+  categoryId     String?
+  brand          Brand?                 @relation(fields: [brandId], references: [id])
+  brandId        String?
+  isFeatured     Boolean                @default(false)
+  isActive       Boolean                @default(true)
+  images         ProductImage[]
+  specifications ProductSpecification[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  reviews        Review[]
+  pcBuildItems   PCBuildItem[]
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@index([name])
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([price])
+  @@index([isActive])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+  url       String
+  alt       String?
+  sortOrder Int     @default(0)
+}
+
+model ProductSpecification {
+  id                 String  @id @default(cuid())
+  product            Product @relation(fields: [productId], references: [id])
+  productId          String
+  // generic typed fields used by compatibility engine (many optional)
+  productType        String?
+  // CPU
+  socket             String?
+  cores              Int?
+  threads            Int?
+  baseClock          Float?
+  boostClock         Float?
+  tdp                Int?
+  // GPU
+  chipset            String?
+  vram               Int?
+  memoryType         String?
+  length             Int?
+  powerConsumption   Int?
+  interface          String?
+  powerConnector     String?
+  // Mainboard
+  ramType            String?
+  ramSlots           Int?
+  maxRam             Int?
+  formFactor         String?
+  pcieVersion        String?
+  // RAM
+  type               String?
+  capacity           Int?
+  speed              Int?
+  modules            Int?
+  // Storage
+  capacityGB         Int?
+  storageInterface   String?
+  rpm                Int?
+  // PSU
+  wattage            Int?
+  efficiency         String?
+  certification      String?
+  connectors         String?
+  // Case / Cooler
+  gpuClearance       Int?
+  cpuCoolerClearance Int?
+  motherboardSupport String?
+  radiatorSupport    String?
+  height             Int?
+
+  extra Json?
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  user      User       @relation(fields: [userId], references: [id])
+  userId    String
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String  @id @default(cuid())
+  cart      Cart    @relation(fields: [cartId], references: [id])
+  cartId    String
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+  quantity  Int
+
+  @@unique([cartId, productId])
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  user          User        @relation(fields: [userId], references: [id])
+  userId        String
+  orderCode     String      @unique
+  status        OrderStatus @default(PENDING)
+  subtotal      Int
+  discount      Int         @default(0)
+  shippingFee   Int         @default(0)
+  total         Int
+  recipientName String
+  phone         String
+  province      String
+  district      String
+  ward          String
+  address       String
+  note          String?
+  items         OrderItem[]
+  payments      Payment[]
+  reviews       Review[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  order       Order   @relation(fields: [orderId], references: [id])
+  orderId     String
+  product     Product @relation(fields: [productId], references: [id])
+  productId   String
+  productName String
+  price       Int
+  quantity    Int
+  subtotal    Int
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  order         Order         @relation(fields: [orderId], references: [id])
+  orderId       String
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  amount        Int
+  transactionId String?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+  order     Order?   @relation(fields: [orderId], references: [id])
+  orderId   String?
+  rating    Int
+  comment   String?
+  images    Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+}
+
+model Promotion {
+  id            String       @id @default(cuid())
+  code          String       @unique
+  name          String
+  description   String?
+  discountType  DiscountType
+  discountValue Int
+  minOrderValue Int?
+  startAt       DateTime?
+  endAt         DateTime?
+  usageLimit    Int?
+  usedCount     Int          @default(0)
+  isActive      Boolean      @default(true)
+}
+
+model Banner {
+  id        String    @id @default(cuid())
+  title     String
+  image     String
+  link      String?
+  sortOrder Int       @default(0)
+  isActive  Boolean   @default(true)
+  startAt   DateTime?
+  endAt     DateTime?
+}
+
+model PCBuild {
+  id         String        @id @default(cuid())
+  user       User          @relation(fields: [userId], references: [id])
+  userId     String
+  name       String
+  totalPrice Int
+  totalPower Int?
+  items      PCBuildItem[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+model PCBuildItem {
+  id            String        @id @default(cuid())
+  build         PCBuild       @relation(fields: [buildId], references: [id])
+  buildId       String
+  product       Product       @relation(fields: [productId], references: [id])
+  productId     String
+  componentType ComponentType
+  quantity      Int
+}
