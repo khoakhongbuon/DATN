@@ -125,9 +125,10 @@ export async function createOrder(userId: string, addressId: unknown) {
   })
 }
 
-export async function listOrders(userId: string) {
+export async function listOrders(userId: string, role?: string) {
+  const where = role === 'ADMIN' ? {} : { userId }
   return prisma.order.findMany({
-    where: { userId },
+    where,
     orderBy: { createdAt: 'desc' },
     select: {
       id: true,
@@ -144,19 +145,21 @@ export async function listOrders(userId: string) {
   })
 }
 
-export async function getOrder(userId: string, orderId: string) {
+export async function getOrder(userId: string, orderId: string, role?: string) {
+  const where = role === 'ADMIN' ? { id: orderId } : { id: orderId, userId }
   const order = await prisma.order.findFirst({
-    where: { id: orderId, userId },
+    where,
     include: orderDetailInclude,
   })
   if (!order) orderError(404, 'Order not found')
   return order
 }
 
-export async function cancelOrder(userId: string, orderId: string) {
+export async function cancelOrder(userId: string, orderId: string, role?: string) {
   return prisma.$transaction(async (transaction) => {
+    const where = role === 'ADMIN' ? { id: orderId } : { id: orderId, userId }
     const order = await transaction.order.findFirst({
-      where: { id: orderId, userId },
+      where,
       include: { items: true },
     })
     if (!order) orderError(404, 'Order not found')

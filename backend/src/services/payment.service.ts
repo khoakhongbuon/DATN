@@ -62,10 +62,11 @@ export async function createPayment(userId: string, orderId: unknown, method: un
   })
 }
 
-export async function getPayment(userId: string, orderId: unknown) {
+export async function getPayment(userId: string, orderId: unknown, role?: string) {
   validateOrderId(orderId)
+  const where = role === 'ADMIN' ? { orderId } : { orderId, order: { userId } }
   const payment = await prisma.payment.findFirst({
-    where: { orderId, order: { userId } },
+    where,
     orderBy: { createdAt: 'desc' },
     select: paymentSelect,
   })
@@ -73,12 +74,13 @@ export async function getPayment(userId: string, orderId: unknown) {
   return payment
 }
 
-export async function cancelPayment(userId: string, orderId: unknown) {
+export async function cancelPayment(userId: string, orderId: unknown, role?: string) {
   validateOrderId(orderId)
 
   return prisma.$transaction(async (transaction) => {
+    const where = role === 'ADMIN' ? { orderId } : { orderId, order: { userId } }
     const payment = await transaction.payment.findFirst({
-      where: { orderId, order: { userId } },
+      where,
       orderBy: { createdAt: 'desc' },
       select: { id: true, status: true },
     })

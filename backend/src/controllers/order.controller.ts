@@ -15,21 +15,21 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
 
 export async function listOrders(req: Request, res: Response, next: NextFunction) {
   try {
-    const data = await service.listOrders(requireUserId(req))
+    const data = await service.listOrders(requireUserId(req), req.userRole)
     return res.json({ success: true, data })
   } catch (err) { next(err) }
 }
 
 export async function getOrder(req: Request, res: Response, next: NextFunction) {
   try {
-    const data = await service.getOrder(requireUserId(req), req.params.id)
+    const data = await service.getOrder(requireUserId(req), req.params.id, req.userRole)
     return res.json({ success: true, data })
   } catch (err) { next(err) }
 }
 
 export async function cancelOrder(req: Request, res: Response, next: NextFunction) {
   try {
-    const data = await service.cancelOrder(requireUserId(req), req.params.id)
+    const data = await service.cancelOrder(requireUserId(req), req.params.id, req.userRole)
     return res.json({ success: true, data })
   } catch (err) { next(err) }
 }

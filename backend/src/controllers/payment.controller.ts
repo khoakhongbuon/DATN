@@ -15,14 +15,14 @@ export async function createPayment(req: Request, res: Response, next: NextFunct
 
 export async function getPayment(req: Request, res: Response, next: NextFunction) {
   try {
-    const data = await service.getPayment(requireUserId(req), req.params.orderId)
+    const data = await service.getPayment(requireUserId(req), req.params.orderId, req.userRole)
     return res.json({ success: true, data })
   } catch (err) { next(err) }
 }
 
 export async function cancelPayment(req: Request, res: Response, next: NextFunction) {
   try {
-    const data = await service.cancelPayment(requireUserId(req), req.params.orderId)
+    const data = await service.cancelPayment(requireUserId(req), req.params.orderId, req.userRole)
     return res.json({ success: true, data })
   } catch (err) { next(err) }
 }
