@@ -44,7 +44,7 @@ const responseMessage = (payload: unknown, fallback: string) => {
 
 export default function CreateProductPage() {
   const router = useRouter()
-  const { user, loading, authenticated } = useAuth()
+  const { user, token, loading, authenticated } = useAuth()
   const [form, setForm] = useState<ProductForm>(initialForm)
   const [categories, setCategories] = useState<Category[]>([])
   const [brands, setBrands] = useState<Brand[]>([])
@@ -119,7 +119,7 @@ export default function CreateProductPage() {
     try {
       const response = await fetch(`${API_BASE_URL}/api/products`, {
         method: 'POST',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           name: form.name.trim(),
           slug: form.slug.trim(),

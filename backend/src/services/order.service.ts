@@ -1,4 +1,4 @@
-import { OrderStatus, Prisma } from '@prisma/client'
+import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client'
 import prisma from '../config/prisma'
 
 function orderError(status: number, message: string): never {
@@ -160,10 +160,30 @@ export async function cancelOrder(userId: string, orderId: string, role?: string
     const where = role === 'ADMIN' ? { id: orderId } : { id: orderId, userId }
     const order = await transaction.order.findFirst({
       where,
-      include: { items: true },
+      include: {
+        items: true,
+        payments: true,
+      },
     })
     if (!order) orderError(404, 'Order not found')
     if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.CONFIRMED) {
+      orderError(409, 'Order cannot be cancelled in its current status')
+    }
+
+    const hasPaidPayment = order.payments.some((p) => p.status === PaymentStatus.PAID)
+    if (hasPaidPayment && role !== 'ADMIN') {
+      orderError(409, 'Cannot cancel a paid order without a refund process')
+    }
+
+    // Atomic update to ensure idempotent cancellation and prevent race conditions
+    const updateResult = await transaction.order.updateMany({
+      where: {
+        id: order.id,
+        status: { in: [OrderStatus.PENDING, OrderStatus.CONFIRMED] },
+      },
+      data: { status: OrderStatus.CANCELLED },
+    })
+    if (updateResult.count === 0) {
       orderError(409, 'Order cannot be cancelled in its current status')
     }
 
@@ -174,9 +194,13 @@ export async function cancelOrder(userId: string, orderId: string, role?: string
       })
     }
 
-    return transaction.order.update({
+    await transaction.payment.updateMany({
+      where: { orderId: order.id, status: PaymentStatus.PENDING },
+      data: { status: PaymentStatus.FAILED },
+    })
+
+    return transaction.order.findUniqueOrThrow({
       where: { id: order.id },
-      data: { status: OrderStatus.CANCELLED },
       include: orderDetailInclude,
     })
   })
