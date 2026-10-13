@@ -1,5 +1,7 @@
 import { OrderStatus, PaymentMethod, PaymentStatus, Prisma } from '@prisma/client'
 import prisma from '../config/prisma'
+import * as vnpayService from './vnpay.service'
+import * as momoService from './momo.service'
 
 function paymentError(status: number, message: string): never {
   throw { status, message }
@@ -30,14 +32,24 @@ const paymentSelect = {
   updatedAt: true,
 } satisfies Prisma.PaymentSelect
 
-export async function createPayment(userId: string, orderId: unknown, method: unknown) {
+export type CreatePaymentOptions = {
+  bankCode?: string
+  ipAddr?: string
+}
+
+export async function createPayment(
+  userId: string,
+  orderId: unknown,
+  method: unknown,
+  options?: CreatePaymentOptions
+) {
   validateOrderId(orderId)
   const paymentMethod = parsePaymentMethod(method)
 
-  return prisma.$transaction(async (transaction) => {
+  const { payment, orderCode } = await prisma.$transaction(async (transaction) => {
     const order = await transaction.order.findFirst({
       where: { id: orderId, userId },
-      select: { id: true, total: true, status: true },
+      select: { id: true, total: true, status: true, orderCode: true },
     })
     if (!order) paymentError(404, 'Order not found')
     if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.CONFIRMED) {
@@ -50,7 +62,7 @@ export async function createPayment(userId: string, orderId: unknown, method: un
     })
     if (existingPayment) paymentError(409, 'Payment already exists for this order')
 
-    return transaction.payment.create({
+    const created = await transaction.payment.create({
       data: {
         order: { connect: { id: order.id } },
         method: paymentMethod,
@@ -59,7 +71,38 @@ export async function createPayment(userId: string, orderId: unknown, method: un
       },
       select: paymentSelect,
     })
+
+    return { payment: created, orderCode: order.orderCode }
   })
+
+  // If VNPAY, generate payment URL (including VNPAYQR support)
+  if (paymentMethod === PaymentMethod.VNPAY) {
+    const paymentUrl = vnpayService.createVnpayPaymentUrl({
+      paymentId: payment.id,
+      orderCode,
+      amount: payment.amount,
+      bankCode: options?.bankCode || 'VNPAYQR',
+      ipAddr: options?.ipAddr,
+    })
+    return { ...payment, paymentUrl }
+  }
+
+  // If MoMo, call sandbox create payment
+  if (paymentMethod === PaymentMethod.MOMO) {
+    const momoResult = await momoService.createMomoPayment({
+      paymentId: payment.id,
+      orderCode,
+      amount: payment.amount,
+    })
+    return {
+      ...payment,
+      payUrl: momoResult.payUrl,
+      qrCodeUrl: momoResult.qrCodeUrl,
+      deeplink: momoResult.deeplink,
+    }
+  }
+
+  return payment
 }
 
 export async function getPayment(userId: string, orderId: unknown, role?: string) {
@@ -96,3 +139,101 @@ export async function cancelPayment(userId: string, orderId: unknown, role?: str
     })
   })
 }
+
+export async function getVnpayUrl(
+  userId: string,
+  orderId: unknown,
+  options?: { bankCode?: string; ipAddr?: string }
+) {
+  validateOrderId(orderId)
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, userId },
+    select: { id: true, orderCode: true, total: true, status: true },
+  })
+  if (!order) paymentError(404, 'Order not found')
+  if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.CONFIRMED) {
+    paymentError(409, 'Order cannot be paid in its current status')
+  }
+
+  let payment = await prisma.payment.findFirst({
+    where: { orderId: order.id, method: PaymentMethod.VNPAY },
+    orderBy: { createdAt: 'desc' },
+    select: paymentSelect,
+  })
+
+  if (!payment) {
+    // If no payment exists yet, create one
+    payment = await prisma.payment.create({
+      data: {
+        orderId: order.id,
+        method: PaymentMethod.VNPAY,
+        status: PaymentStatus.PENDING,
+        amount: order.total,
+      },
+      select: paymentSelect,
+    })
+  } else if (payment.status === PaymentStatus.PAID) {
+    paymentError(409, 'Payment already paid for this order')
+  }
+
+  const paymentUrl = vnpayService.createVnpayPaymentUrl({
+    paymentId: payment.id,
+    orderCode: order.orderCode,
+    amount: payment.amount,
+    bankCode: options?.bankCode || 'VNPAYQR',
+    ipAddr: options?.ipAddr,
+  })
+
+  return { ...payment, paymentUrl }
+}
+
+export async function getMomoUrl(userId: string, orderId: unknown) {
+  validateOrderId(orderId)
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, userId },
+    select: { id: true, orderCode: true, total: true, status: true },
+  })
+  if (!order) paymentError(404, 'Order not found')
+  if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.CONFIRMED) {
+    paymentError(409, 'Order cannot be paid in its current status')
+  }
+
+  let payment = await prisma.payment.findFirst({
+    where: { orderId: order.id, method: PaymentMethod.MOMO },
+    orderBy: { createdAt: 'desc' },
+    select: paymentSelect,
+  })
+
+  if (!payment) {
+    payment = await prisma.payment.create({
+      data: {
+        orderId: order.id,
+        method: PaymentMethod.MOMO,
+        status: PaymentStatus.PENDING,
+        amount: order.total,
+      },
+      select: paymentSelect,
+    })
+  } else if (payment.status === PaymentStatus.PAID) {
+    paymentError(409, 'Payment already paid for this order')
+  }
+
+  const momoResult = await momoService.createMomoPayment({
+    paymentId: payment.id,
+    orderCode: order.orderCode,
+    amount: payment.amount,
+  })
+
+  return {
+    ...payment,
+    payUrl: momoResult.payUrl,
+    qrCodeUrl: momoResult.qrCodeUrl,
+    deeplink: momoResult.deeplink,
+  }
+}
+
+// Webhook delegates
+export const processVnpayIpn = vnpayService.processVnpayIpn
+export const verifyVnpayReturn = vnpayService.verifyVnpayReturn
+export const processMomoIpn = momoService.processMomoIpn
+export const verifyMomoReturn = momoService.verifyMomoReturn

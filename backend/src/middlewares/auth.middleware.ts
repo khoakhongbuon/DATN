@@ -43,3 +43,13 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
     return next(err)
   }
 }
+
+export function requireAdmin(req: Request, _res: Response, next: NextFunction) {
+  if (!req.userId) {
+    return next({ status: 401, message: 'Authentication required' })
+  }
+  if (req.userRole !== 'ADMIN') {
+    return next({ status: 403, message: 'Forbidden: Admin access required' })
+  }
+  next()
+}

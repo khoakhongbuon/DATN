@@ -8,5 +8,7 @@ router.use(authenticate)
 router.post('/', controller.createPayment)
 router.get('/', controller.getPayment)
 router.put('/cancel', controller.cancelPayment)
+router.post('/vnpay-url', controller.getVnpayUrl)
+router.post('/momo-url', controller.getMomoUrl)
 
 export default router

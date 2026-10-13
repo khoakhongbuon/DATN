@@ -11,8 +11,10 @@ import authRoutes from './routes/auth.routes'
 import addressRoutes from './routes/address.routes'
 import orderRoutes from './routes/order.routes'
 import paymentRoutes from './routes/payment.routes'
+import paymentWebhookRoutes from './routes/payment-webhook.routes'
 import pcBuilderRoutes from './routes/pc-builder.routes'
 import aiRoutes from './routes/ai.routes'
+import userRoutes from './routes/user.routes'
 import { errorHandler } from './middlewares/error.middleware'
 
 dotenv.config()
@@ -33,7 +35,9 @@ app.use('/api/products/:productId/specifications', productSpecificationRoutes)
 app.use('/api/cart/:userId', cartRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/users/:userId/addresses', addressRoutes)
+app.use('/api/users', userRoutes)
 app.use('/api/orders/:orderId/payment', paymentRoutes)
+app.use('/api/payments', paymentWebhookRoutes)
 app.use('/api/orders', orderRoutes)
 app.use('/api/pc-builder', pcBuilderRoutes)
 app.use('/api/ai', aiRoutes)
