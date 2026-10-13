@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { useEffect, useMemo, useState } from 'react'
 import { API_BASE_URL as CART_API_BASE_URL, cartHeaders } from '../../lib/cart'
 import { useAuth } from '../../lib/auth'
+import { ProductImageFallback } from '../../components/ProductImageFallback'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
 
@@ -303,7 +304,35 @@ export default function ProductDetailPage() {
 }
 
 function Gallery({ product, images, activeImage, onSelect }: { product: Product; images: ProductImage[]; activeImage: string; onSelect: (url: string) => void }) {
-  return <div className="rounded-3xl border border-blue-100 bg-white p-4 shadow-sm sm:p-5"><div className="flex h-[340px] items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-slate-100 to-blue-50 text-6xl font-black text-blue-200 sm:h-[500px]">{activeImage ? <img src={activeImage} alt={product.name} className="h-full w-full object-contain" /> : product.name.slice(0, 2).toUpperCase()}</div>{images.length ? <div className="mt-4 grid grid-cols-4 gap-3">{images.map((image) => <button key={image.id} type="button" aria-label={`Chọn ảnh ${image.alt || product.name}`} aria-pressed={activeImage === image.url} onClick={() => onSelect(image.url)} className={`overflow-hidden rounded-xl border-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-300 ${activeImage === image.url ? 'border-blue-600' : 'border-transparent'}`}><img src={image.url} alt={image.alt || product.name} className="h-20 w-full object-cover" /></button>)}</div> : null}</div>
+  return (
+    <div className="rounded-3xl border border-blue-100 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex h-[340px] items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-slate-100 to-blue-50 text-6xl font-black text-blue-200 sm:h-[500px]">
+        <ProductImageFallback src={activeImage} name={product.name} className="h-full w-full object-contain" />
+      </div>
+      {images.length ? (
+        <div className="mt-4 grid grid-cols-4 gap-3">
+          {images.map((image) => (
+            <button
+              key={image.id}
+              type="button"
+              aria-label={`Chọn ảnh ${image.alt || product.name}`}
+              aria-pressed={activeImage === image.url}
+              onClick={() => onSelect(image.url)}
+              className={`overflow-hidden rounded-xl border-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-300 ${activeImage === image.url ? 'border-blue-600' : 'border-transparent'}`}
+            >
+              <ProductImageFallback
+                src={image.url}
+                alt={image.alt || product.name}
+                name={product.name}
+                className="h-20 w-full object-cover"
+                fallbackClassName="flex h-20 w-full items-center justify-center text-xs font-black text-slate-400 bg-slate-100"
+              />
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 function PurchaseCard({ product, quantity, cartSubmitting, onQuantityChange, onAdd }: { product: Product; quantity: number; cartSubmitting: boolean; onQuantityChange: (value: number) => void; onAdd: () => void }) {
@@ -312,7 +341,7 @@ function PurchaseCard({ product, quantity, cartSubmitting, onQuantityChange, onA
 
 function RelatedCard({ product, imageUrl }: { product: Product; imageUrl?: string }) {
   const discount = getDiscount(product)
-  return <Link href={`/products/${product.slug}`} className="group min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"><div className="relative flex h-32 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-slate-100 to-blue-50 text-3xl font-black text-blue-200">{imageUrl ? <img src={imageUrl} alt={product.name} className="h-full w-full object-contain" /> : product.name.slice(0, 2).toUpperCase()}{discount ? <span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-1 text-[10px] font-black text-white">-{discount}%</span> : null}</div><p className="mt-3 truncate text-[10px] font-bold uppercase tracking-wider text-slate-400">{product.brand?.name || 'TK'}</p><h3 className="mt-1 line-clamp-2 min-h-10 text-sm font-bold group-hover:text-blue-700">{product.name}</h3><p className="mt-2 font-black text-blue-700">{formatPrice(discount ? product.salePrice as number : product.price)}</p></Link>
+  return <Link href={`/products/${product.slug}`} className="group min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"><div className="relative flex h-32 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-slate-100 to-blue-50 text-3xl font-black text-blue-200"><ProductImageFallback src={imageUrl} name={product.name} className="h-full w-full object-contain" />{discount ? <span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-1 text-[10px] font-black text-white">-{discount}%</span> : null}</div><p className="mt-3 truncate text-[10px] font-bold uppercase tracking-wider text-slate-400">{product.brand?.name || 'TK'}</p><h3 className="mt-1 line-clamp-2 min-h-10 text-sm font-bold group-hover:text-blue-700">{product.name}</h3><p className="mt-2 font-black text-blue-700">{formatPrice(discount ? product.salePrice as number : product.price)}</p></Link>
 }
 
 function DetailSkeleton() {

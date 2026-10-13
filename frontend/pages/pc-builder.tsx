@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { API_BASE_URL } from '../lib/cart'
+import { ProductImageFallback } from '../components/ProductImageFallback'
 
 type ComponentKey = 'CPU' | 'MAINBOARD' | 'RAM' | 'GPU' | 'STORAGE' | 'PSU' | 'CASE' | 'COOLER'
 
@@ -253,7 +254,7 @@ export default function PcBuilderPage() {
                   {product ? (
                     <div className="mt-4 flex gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                       <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white text-xl font-black text-blue-300">
-                        {imageUrl ? <img src={imageUrl} alt={product.name} className="h-full w-full object-contain" /> : getInitials(product.name)}
+                        <ProductImageFallback src={imageUrl} name={product.name} className="h-full w-full object-contain" fallbackClassName="text-xl font-black text-blue-300" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">{product.brand?.name || product.category?.name || 'TK Select'}</p>
@@ -406,7 +407,7 @@ export default function PcBuilderPage() {
                     className="flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
                   >
                     <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-xl font-black text-blue-300">
-                      {imageUrl ? <img src={imageUrl} alt={product.name} className="h-full w-full object-contain" /> : getInitials(product.name)}
+                      <ProductImageFallback src={imageUrl} name={product.name} className="h-full w-full object-contain" fallbackClassName="text-xl font-black text-blue-300" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">{product.brand?.name || product.category?.name || 'TK Select'}</p>
