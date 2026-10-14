@@ -20,7 +20,47 @@ import { errorHandler } from './middlewares/error.middleware'
 dotenv.config()
 
 const app = express()
-app.use(cors())
+
+const isProduction = process.env.NODE_ENV === 'production'
+
+const configuredOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
+  .filter(Boolean)
+
+const defaultDevOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000']
+const allowedOrigins = new Set(
+  isProduction
+    ? configuredOrigins
+    : [...configuredOrigins, ...defaultDevOrigins]
+)
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow non-browser requests or same-origin requests (e.g. server-to-server IPN, curl, health check)
+      if (!origin) {
+        return callback(null, true)
+      }
+
+      const normalizedOrigin = origin.trim().replace(/\/+$/, '')
+
+      if (allowedOrigins.has(normalizedOrigin)) {
+        return callback(null, true)
+      }
+
+      // In production, reject unauthorized origins; in development with no config, allow localhost
+      if (!isProduction && defaultDevOrigins.includes(normalizedOrigin)) {
+        return callback(null, true)
+      }
+
+      return callback(new Error(`Origin ${origin} not allowed by CORS policy`))
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  })
+)
 app.use(express.json())
 
 app.get('/api/health', (_req, res) => {
