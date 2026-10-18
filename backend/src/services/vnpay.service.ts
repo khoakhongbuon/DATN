@@ -10,6 +10,12 @@ export type VnpayConfig = {
   ipnUrl: string
 }
 
+export function isVnpayConfigured(): boolean {
+  const tmnCode = process.env.VNPAY_TMN_CODE?.trim()
+  const hashSecret = process.env.VNPAY_HASH_SECRET?.trim()
+  return Boolean(tmnCode && hashSecret)
+}
+
 export function getVnpayConfig(): VnpayConfig {
   const tmnCode = process.env.VNPAY_TMN_CODE?.trim()
   const hashSecret = process.env.VNPAY_HASH_SECRET?.trim()

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useEffect, useMemo, useState } from 'react'
 import { AdminLayout } from '../../../components/admin/AdminLayout'
+import { ProductImageFallback } from '../../../components/ProductImageFallback'
 import { useAuth } from '../../../lib/auth'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
@@ -256,11 +257,12 @@ export default function AdminProductsPage() {
             {products.map((product) => (
               <div key={product.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div className="flex h-44 items-center justify-center overflow-hidden bg-slate-50">
-                  {imageMap[product.id] ? (
-                    <img src={imageMap[product.id]} alt={product.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-blue-100 text-xl font-black text-blue-700">{product.name.slice(0, 2).toUpperCase() || 'TK'}</div>
-                  )}
+                  <ProductImageFallback
+                    src={imageMap[product.id]}
+                    name={product.name}
+                    categorySlug={product.category?.slug}
+                    className="h-full w-full object-contain"
+                  />
                 </div>
 
                 <div className="space-y-3 p-4">

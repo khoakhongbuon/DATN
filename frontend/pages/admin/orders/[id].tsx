@@ -43,7 +43,7 @@ type Order = {
   }
 }
 
-type PaymentMethod = 'COD' | 'VNPAY' | 'MOMO'
+type PaymentMethod = 'COD' | 'VNPAY' | 'MOMO' | 'BANK_TRANSFER'
 type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED'
 
 type Payment = {
@@ -113,9 +113,10 @@ const paymentStatusStyles: Record<PaymentStatus, string> = {
 }
 
 const paymentMethodLabels: Record<PaymentMethod, string> = {
-  COD: 'Thanh toán khi nhận hàng',
+  COD: 'Thanh toán khi nhận hàng (COD)',
   VNPAY: 'VNPAY',
   MOMO: 'MoMo',
+  BANK_TRANSFER: 'Chuyển khoản ngân hàng (VietQR)',
 }
 
 const apiMessage = (payload: ApiPayload<unknown>, fallback: string) => payload.message || payload.error || fallback
@@ -134,6 +135,9 @@ export default function AdminOrderDetailPage() {
   const [retryKey, setRetryKey] = useState(0)
   const [cancellingOrder, setCancellingOrder] = useState(false)
   const [cancellingPayment, setCancellingPayment] = useState(false)
+  const [confirmingPayment, setConfirmingPayment] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [confirmNote, setConfirmNote] = useState('')
 
   useEffect(() => {
     if (!loading && !authenticated) {
@@ -281,6 +285,41 @@ export default function AdminOrderDetailPage() {
       setPaymentError((cancelPaymentError as Error).message || 'Không thể hủy thanh toán.')
     } finally {
       setCancellingPayment(false)
+    }
+  }
+
+  const handleConfirmPayment = async () => {
+    if (!order || confirmingPayment) return
+    setConfirmingPayment(true)
+    setPaymentError('')
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/payment/confirm`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          transactionNote: confirmNote.trim() || undefined,
+        }),
+      })
+      const payload = await response.json() as { success?: boolean; data?: unknown; message?: string; error?: string }
+      if (response.status === 401) {
+        void router.replace(`/login?returnUrl=${encodeURIComponent(router.asPath)}`)
+        return
+      }
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.message || payload.error || 'Không thể xác nhận thanh toán.')
+      }
+      setShowConfirmModal(false)
+      setConfirmNote('')
+      // Reload order and payment
+      setRetryKey((v) => v + 1)
+    } catch (confirmError) {
+      setPaymentError((confirmError as Error).message || 'Không thể xác nhận thanh toán.')
+    } finally {
+      setConfirmingPayment(false)
     }
   }
 
@@ -509,6 +548,16 @@ export default function AdminOrderDetailPage() {
               <h3 className="text-lg font-black text-slate-900">Thao tác</h3>
 
               <div className="mt-4 flex flex-wrap gap-3">
+                {payment?.status === 'PENDING' || (!payment && ['PENDING', 'CONFIRMED'].includes(order.status)) ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmModal(true)}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 transition"
+                  >
+                    ✓ Xác nhận đã nhận tiền (Admin)
+                  </button>
+                ) : null}
+
                 {['PENDING', 'CONFIRMED'].includes(order.status) ? (
                   <button type="button" onClick={handleCancelOrder} disabled={cancellingOrder} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60">
                     {cancellingOrder ? 'Đang hủy...' : 'Hủy đơn hàng'}
@@ -525,6 +574,56 @@ export default function AdminOrderDetailPage() {
           </div>
         ) : null}
       </div>
+
+      {/* Modal xác nhận thanh toán thủ công */}
+      {showConfirmModal && order ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-black text-slate-900">Xác nhận thanh toán đơn hàng</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Bạn có chắc chắn muốn xác nhận đã nhận đủ số tiền{' '}
+              <strong className="text-blue-700">{formatPrice(order.total)}</strong> cho đơn hàng{' '}
+              <strong className="text-slate-900">{order.orderCode}</strong>?
+            </p>
+            <p className="mt-2 text-xs text-amber-700 bg-amber-50 rounded-xl p-3">
+              Hành động này sẽ cập nhật trạng thái thanh toán thành <strong>Đã thanh toán (PAID)</strong> và đơn hàng thành <strong>Đã xác nhận (CONFIRMED)</strong>.
+            </p>
+
+            <div className="mt-4">
+              <label htmlFor="confirm-note" className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+                Ghi chú / Mã giao dịch ngân hàng (tùy chọn)
+              </label>
+              <input
+                id="confirm-note"
+                type="text"
+                value={confirmNote}
+                onChange={(e) => setConfirmNote(e.target.value)}
+                placeholder="VD: FT240987654321 hoặc Chuyển khoản MB"
+                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowConfirmModal(false)}
+                disabled={confirmingPayment}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmPayment}
+                disabled={confirmingPayment}
+                className="rounded-xl bg-emerald-600 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {confirmingPayment ? 'Đang xử lý...' : 'Xác nhận đã nhận tiền'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </AdminLayout>
   )
 }

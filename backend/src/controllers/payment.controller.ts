@@ -14,6 +14,15 @@ function getClientIp(req: Request): string {
   return req.socket.remoteAddress || '127.0.0.1'
 }
 
+export function getPaymentConfig(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const data = service.getPaymentConfig()
+    return res.json({ success: true, data })
+  } catch (err) {
+    next(err)
+  }
+}
+
 export async function createPayment(req: Request, res: Response, next: NextFunction) {
   try {
     const data = await service.createPayment(
@@ -64,6 +73,31 @@ export async function getVnpayUrl(req: Request, res: Response, next: NextFunctio
 export async function getMomoUrl(req: Request, res: Response, next: NextFunction) {
   try {
     const data = await service.getMomoUrl(requireUserId(req), req.params.orderId)
+    return res.json({ success: true, data })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function getBankTransferDetails(req: Request, res: Response, next: NextFunction) {
+  try {
+    const data = await service.getBankTransferDetails(requireUserId(req), req.params.orderId, req.userRole)
+    return res.json({ success: true, data })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function confirmManualPayment(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (req.userRole !== 'ADMIN') {
+      return res.status(403).json({ success: false, message: 'Admin privileges required' })
+    }
+    const data = await service.confirmManualPayment(
+      req.params.orderId,
+      requireUserId(req),
+      req.body.transactionNote
+    )
     return res.json({ success: true, data })
   } catch (err) {
     next(err)

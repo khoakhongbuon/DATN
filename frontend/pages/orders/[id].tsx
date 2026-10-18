@@ -32,7 +32,7 @@ type Order = {
   items: OrderItem[]
 }
 
-type PaymentMethod = 'COD' | 'VNPAY' | 'MOMO'
+type PaymentMethod = 'COD' | 'BANK_TRANSFER' | 'VNPAY' | 'MOMO'
 type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED'
 type Payment = {
   id: string
@@ -46,6 +46,15 @@ type Payment = {
   payUrl?: string | null
   qrCodeUrl?: string | null
   deeplink?: string | null
+  bankTransfer?: {
+    bankId: string
+    bankName: string
+    accountNumber: string
+    accountName: string
+    amount: number
+    transferContent: string
+    qrUrl: string
+  } | null
   createdAt: string
   updatedAt: string
 }
@@ -93,7 +102,21 @@ const paymentStatusStyles: Record<PaymentStatus, string> = {
   REFUNDED: 'bg-slate-100 text-slate-700',
 }
 
+type PaymentConfig = {
+  codAvailable: boolean
+  vnpayAvailable: boolean
+  momoAvailable: boolean
+  bankTransferAvailable: boolean
+  bankInfo?: {
+    bankId: string
+    bankName: string
+    accountNumber: string
+    accountName: string
+  } | null
+}
+
 const paymentMethodLabels: Record<PaymentMethod, string> = {
+  BANK_TRANSFER: 'Chuyển khoản ngân hàng (VietQR)',
   COD: 'Tiền mặt khi nhận hàng (COD)',
   VNPAY: 'VNPAY QR Sandbox',
   MOMO: 'Ví MoMo Sandbox',
@@ -111,7 +134,8 @@ export default function OrderDetailPage() {
   const [retry, setRetry] = useState(0)
   const [cancelling, setCancelling] = useState(false)
   const [payment, setPayment] = useState<Payment | null>(null)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('COD')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('BANK_TRANSFER')
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null)
   const [paymentLoading, setPaymentLoading] = useState(true)
   const [paymentError, setPaymentError] = useState('')
   const [creatingPayment, setCreatingPayment] = useState(false)
@@ -141,10 +165,19 @@ export default function OrderDetailPage() {
           setPaymentLoading(true)
           setPaymentError('')
           try {
-            const paymentResponse = await fetch(
-              `${API_BASE_URL}/api/orders/${encodeURIComponent(payload.data.id)}/payment`,
-              { signal, headers: cartHeaders(token) }
-            )
+            const [paymentResponse, configResponse] = await Promise.all([
+              fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(payload.data.id)}/payment`, {
+                signal,
+                headers: cartHeaders(token),
+              }),
+              fetch(`${API_BASE_URL}/api/payments/config`, { signal }).catch(() => null),
+            ])
+
+            if (configResponse && configResponse.ok) {
+              const cfgPayload = (await configResponse.json()) as ApiPayload<PaymentConfig>
+              if (cfgPayload.data) setPaymentConfig(cfgPayload.data)
+            }
+
             const paymentPayload = (await paymentResponse.json()) as ApiPayload<Payment>
             if (paymentResponse.status === 401) {
               void router.replace(`/login?returnUrl=${encodeURIComponent(`/orders/${payload.data.id}`)}`)
@@ -211,6 +244,12 @@ export default function OrderDetailPage() {
     setCreatingPayment(true)
     setPaymentError('')
     try {
+      if (paymentMethod === 'MOMO' && paymentConfig && !paymentConfig.momoAvailable) {
+        throw new Error('Cổng MoMo Gateway hiện chưa được cấu hình. Quý khách vui lòng chọn Chuyển khoản VietQR hoặc COD.')
+      }
+      if (paymentMethod === 'BANK_TRANSFER' && paymentConfig && !paymentConfig.bankTransferAvailable) {
+        throw new Error('Thông tin tài khoản ngân hàng chưa được cấu hình. Vui lòng chọn COD hoặc liên hệ hỗ trợ.')
+      }
       const response = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/payment`, {
         method: 'POST',
         headers: cartHeaders(token, true),
@@ -230,7 +269,7 @@ export default function OrderDetailPage() {
 
       if (payload.data.paymentUrl) {
         window.location.href = payload.data.paymentUrl
-      } else if (payload.data.qrCodeUrl || payload.data.payUrl) {
+      } else if (payload.data.method === 'MOMO' && (payload.data.qrCodeUrl || payload.data.payUrl)) {
         setMomoQrModal({ qrCodeUrl: payload.data.qrCodeUrl || undefined, payUrl: payload.data.payUrl || undefined })
       }
     } catch (createError) {
@@ -395,7 +434,9 @@ export default function OrderDetailPage() {
             </section>
 
             <PaymentSection
+              order={order}
               payment={payment}
+              paymentConfig={paymentConfig}
               paymentMethod={paymentMethod}
               paymentLoading={paymentLoading}
               paymentError={paymentError}
@@ -491,7 +532,9 @@ export default function OrderDetailPage() {
 }
 
 function PaymentSection({
+  order,
   payment,
+  paymentConfig,
   paymentMethod,
   paymentLoading,
   paymentError,
@@ -504,7 +547,9 @@ function PaymentSection({
   onCancel,
   onRetry,
 }: {
+  order: Order
   payment: Payment | null
+  paymentConfig: PaymentConfig | null
   paymentMethod: PaymentMethod
   paymentLoading: boolean
   paymentError: string
@@ -517,6 +562,16 @@ function PaymentSection({
   onCancel: () => void
   onRetry: () => void
 }) {
+  const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [customerNotified, setCustomerNotified] = useState(false)
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedField(field)
+      setTimeout(() => setCopiedField(null), 2000)
+    })
+  }
+
   if (paymentLoading)
     return (
       <section className="animate-pulse rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -553,12 +608,142 @@ function PaymentSection({
             <span className="text-slate-500">Số tiền: </span>
             <strong className="text-blue-700">{formatPrice(payment.amount)}</strong>
           </p>
+
           {payment.method === 'COD' ? (
             <p className="rounded-xl bg-blue-50 p-3 text-blue-800">
               Thanh toán tiền mặt khi nhân viên giao hàng đến tận nơi.
             </p>
+          ) : payment.method === 'BANK_TRANSFER' ? (
+            payment.status === 'PAID' ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="font-bold text-emerald-800">✓ Đã xác nhận thanh toán chuyển khoản thành công</p>
+                <p className="mt-1 text-xs text-emerald-700">
+                  {payment.transactionId ? `Mã đối soát: ${payment.transactionId}. ` : ''}
+                  Đơn hàng đã được xác nhận và đang được đóng gói giao hàng.
+                </p>
+              </div>
+            ) : payment.status === 'PENDING' ? (
+              <div className="space-y-4">
+                <div className="rounded-2xl border-2 border-blue-100 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 p-5">
+                  <div className="flex flex-col sm:flex-row gap-6 items-center">
+                    {payment.qrCodeUrl || payment.bankTransfer?.qrUrl ? (
+                      <div className="flex flex-col items-center">
+                        <div className="rounded-2xl border-2 border-blue-200 bg-white p-2 shadow-sm">
+                          <img
+                            src={payment.qrCodeUrl || payment.bankTransfer?.qrUrl || ''}
+                            alt="VietQR Transfer"
+                            className="h-48 w-48 object-contain"
+                          />
+                        </div>
+                        <p className="mt-2 text-xs font-bold text-slate-500">Quét bằng app ngân hàng / Momo</p>
+                      </div>
+                    ) : null}
+
+                    <div className="w-full flex-1 space-y-3 text-sm">
+                      <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                        <span className="text-slate-500">Ngân hàng</span>
+                        <strong className="text-slate-800">
+                          {payment.bankTransfer?.bankName || paymentConfig?.bankInfo?.bankName || payment.bankTransfer?.bankId || 'Ngân hàng Quân Đội (MB Bank)'}
+                        </strong>
+                      </div>
+
+                      <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                        <span className="text-slate-500">Số tài khoản</span>
+                        <div className="flex items-center gap-2">
+                          <strong className="font-mono text-base font-black text-blue-700">
+                            {payment.bankTransfer?.accountNumber || paymentConfig?.bankInfo?.accountNumber || '—'}
+                          </strong>
+                          {(payment.bankTransfer?.accountNumber || paymentConfig?.bankInfo?.accountNumber) ? (
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(payment.bankTransfer?.accountNumber || paymentConfig?.bankInfo?.accountNumber || '', 'acc')}
+                              className="rounded-lg bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700 hover:bg-blue-200"
+                            >
+                              {copiedField === 'acc' ? 'Đã sao chép!' : 'Sao chép'}
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                        <span className="text-slate-500">Chủ tài khoản</span>
+                        <strong className="uppercase text-slate-800">
+                          {payment.bankTransfer?.accountName || paymentConfig?.bankInfo?.accountName || '—'}
+                        </strong>
+                      </div>
+
+                      <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                        <span className="text-slate-500">Số tiền</span>
+                        <div className="flex items-center gap-2">
+                          <strong className="text-base font-black text-blue-700">{formatPrice(payment.amount)}</strong>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(String(payment.amount), 'amount')}
+                            className="rounded-lg bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700 hover:bg-blue-200"
+                          >
+                            {copiedField === 'amount' ? 'Đã sao chép!' : 'Sao chép'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                        <span className="text-slate-500">Nội dung CK</span>
+                        <div className="flex items-center gap-2">
+                          <strong className="font-mono font-black text-indigo-700">
+                            {payment.bankTransfer?.transferContent || order.orderCode}
+                          </strong>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(payment.bankTransfer?.transferContent || order.orderCode, 'content')}
+                            className="rounded-lg bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-700 hover:bg-indigo-200"
+                          >
+                            {copiedField === 'content' ? 'Đã sao chép!' : 'Sao chép'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
+                    <p className="font-bold">⚠️ Lưu ý quan trọng:</p>
+                    <p className="mt-1">
+                      Vui lòng ghi đúng nội dung chuyển khoản <strong>{payment.bankTransfer?.transferContent || order.orderCode}</strong> để nhân viên đối soát và xác nhận đơn hàng nhanh chóng nhất.
+                    </p>
+                  </div>
+
+                  {customerNotified ? (
+                    <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
+                      <p className="font-bold">✓ Đã ghi nhận thông báo chuyển khoản!</p>
+                      <p className="mt-1">
+                        Đơn hàng của bạn đang được quản trị viên kiểm tra và đối soát giao dịch. Trạng thái đơn hàng sẽ được cập nhật sang Đã xác nhận ngay khi quản trị viên kiểm tra tài khoản.
+                      </p>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    {!customerNotified ? (
+                      <button
+                        type="button"
+                        onClick={() => setCustomerNotified(true)}
+                        className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white shadow hover:bg-blue-800"
+                      >
+                        Tôi đã chuyển khoản thành công
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      disabled={cancellingPayment}
+                      onClick={onCancel}
+                      className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {cancellingPayment ? 'Đang hủy...' : 'Hủy thanh toán'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null
           ) : payment.status === 'PAID' ? (
-            <p className="rounded-xl bg-emerald-50 p-3 text-emerald-800 font-semibold">
+            <p className="rounded-xl bg-emerald-50 p-3 font-semibold text-emerald-800">
               Đơn hàng đã được thanh toán thành công qua {paymentMethodLabels[payment.method]}.
               {payment.transactionId ? ` (Mã giao dịch: ${payment.transactionId})` : ''}
             </p>
@@ -602,38 +787,76 @@ function PaymentSection({
       ) : (
         <div className="mt-4">
           <p className="text-sm text-slate-500">Chọn phương thức thanh toán cho đơn hàng này.</p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            {(['COD', 'VNPAY', 'MOMO'] as PaymentMethod[]).map((method) => (
-              <label
-                key={method}
-                className={`cursor-pointer rounded-xl border p-3 text-sm font-bold transition ${
-                  paymentMethod === method
-                    ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-100'
-                    : 'border-slate-200 hover:border-blue-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="payment-method"
-                  value={method}
-                  checked={paymentMethod === method}
-                  onChange={() => onMethodChange(method)}
-                  className="sr-only"
-                />
-                {paymentMethodLabels[method]}
-                <span className="mt-1 block text-xs font-normal text-slate-500">
-                  {method === 'COD'
-                    ? 'Thanh toán khi nhận hàng'
-                    : method === 'VNPAY'
-                    ? 'Quét mã VNPAY-QR'
-                    : 'Ví điện tử MoMo'}
-                </span>
-              </label>
-            ))}
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {(['BANK_TRANSFER', 'COD', 'VNPAY', 'MOMO'] as PaymentMethod[]).map((method) => {
+              const isMomo = method === 'MOMO'
+              const isBank = method === 'BANK_TRANSFER'
+              const isMomoDisabled = isMomo && paymentConfig && !paymentConfig.momoAvailable
+              const isBankDisabled = isBank && paymentConfig && !paymentConfig.bankTransferAvailable
+
+              return (
+                <label
+                  key={method}
+                  className={`cursor-pointer rounded-xl border p-4 text-sm font-bold transition ${
+                    paymentMethod === method
+                      ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-100'
+                      : 'border-slate-200 hover:border-blue-300'
+                  } ${isMomoDisabled || isBankDisabled ? 'opacity-70' : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name="payment-method"
+                    value={method}
+                    checked={paymentMethod === method}
+                    onChange={() => onMethodChange(method)}
+                    className="sr-only"
+                  />
+                  <div className="flex items-center justify-between">
+                    <span>{paymentMethodLabels[method]}</span>
+                    {isBank && (
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-black text-blue-700">
+                        Khuyên dùng
+                      </span>
+                    )}
+                    {isMomoDisabled && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                        Chưa cấu hình
+                      </span>
+                    )}
+                  </div>
+                  <span className="mt-1 block text-xs font-normal text-slate-500">
+                    {method === 'BANK_TRANSFER'
+                      ? 'Quét mã VietQR chuyển khoản ngân hàng'
+                      : method === 'COD'
+                      ? 'Thanh toán tiền mặt khi nhận hàng'
+                      : method === 'VNPAY'
+                      ? 'Quét mã VNPAY-QR'
+                      : 'Ví điện tử MoMo'}
+                  </span>
+                </label>
+              )
+            })}
           </div>
+
+          {paymentMethod === 'MOMO' && paymentConfig && !paymentConfig.momoAvailable ? (
+            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+              <p className="font-bold">Lưu ý về cổng MoMo:</p>
+              <p className="mt-1">
+                Cổng MoMo Gateway hiện chưa được cấu hình khóa bảo mật. Vui lòng chọn <strong>Chuyển khoản VietQR</strong> hoặc <strong>COD</strong> để tiếp tục đơn hàng.
+              </p>
+              <button
+                type="button"
+                onClick={() => onMethodChange('BANK_TRANSFER')}
+                className="mt-2 font-bold text-blue-700 underline"
+              >
+                Chuyển sang Chuyển khoản ngân hàng (VietQR)
+              </button>
+            </div>
+          ) : null}
+
           <button
             type="button"
-            disabled={creatingPayment}
+            disabled={Boolean(creatingPayment || (paymentMethod === 'MOMO' && paymentConfig && !paymentConfig.momoAvailable))}
             onClick={onCreate}
             className="mt-4 rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white hover:bg-blue-800 disabled:opacity-50"
           >

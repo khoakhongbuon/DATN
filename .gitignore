@@ -9,3 +9,11 @@ coverage/
 pnpm-lock.yaml
 package-lock.json
 yarn.lock
+
+# Temporary scratch & audit files
+backend/prisma/*.json
+backend/prisma/backup_images/
+backend/prisma/apply_remediation.ts
+backend/prisma/build_remediation_plan.ts
+backend/prisma/check_url_util.ts
+backend/prisma/generate_placeholders.ts

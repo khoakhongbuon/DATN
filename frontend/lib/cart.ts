@@ -6,6 +6,7 @@ export type CartProduct = {
   salePrice?: number | null
   stock: number
   brand?: { name: string } | null
+  category?: { name?: string; slug?: string } | null
   images?: Array<{ url: string; alt?: string | null; sortOrder?: number | null }>
 }
 

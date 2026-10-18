@@ -307,7 +307,7 @@ function Gallery({ product, images, activeImage, onSelect }: { product: Product;
   return (
     <div className="rounded-3xl border border-blue-100 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex h-[340px] items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-slate-100 to-blue-50 text-6xl font-black text-blue-200 sm:h-[500px]">
-        <ProductImageFallback src={activeImage} name={product.name} className="h-full w-full object-contain" />
+        <ProductImageFallback src={activeImage} name={product.name} categorySlug={product.category?.slug} className="h-full w-full object-contain" />
       </div>
       {images.length ? (
         <div className="mt-4 grid grid-cols-4 gap-3">
@@ -324,6 +324,7 @@ function Gallery({ product, images, activeImage, onSelect }: { product: Product;
                 src={image.url}
                 alt={image.alt || product.name}
                 name={product.name}
+                categorySlug={product.category?.slug}
                 className="h-20 w-full object-cover"
                 fallbackClassName="flex h-20 w-full items-center justify-center text-xs font-black text-slate-400 bg-slate-100"
               />
@@ -341,7 +342,7 @@ function PurchaseCard({ product, quantity, cartSubmitting, onQuantityChange, onA
 
 function RelatedCard({ product, imageUrl }: { product: Product; imageUrl?: string }) {
   const discount = getDiscount(product)
-  return <Link href={`/products/${product.slug}`} className="group min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"><div className="relative flex h-32 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-slate-100 to-blue-50 text-3xl font-black text-blue-200"><ProductImageFallback src={imageUrl} name={product.name} className="h-full w-full object-contain" />{discount ? <span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-1 text-[10px] font-black text-white">-{discount}%</span> : null}</div><p className="mt-3 truncate text-[10px] font-bold uppercase tracking-wider text-slate-400">{product.brand?.name || 'TK'}</p><h3 className="mt-1 line-clamp-2 min-h-10 text-sm font-bold group-hover:text-blue-700">{product.name}</h3><p className="mt-2 font-black text-blue-700">{formatPrice(discount ? product.salePrice as number : product.price)}</p></Link>
+  return <Link href={`/products/${product.slug}`} className="group min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"><div className="relative flex h-32 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-slate-100 to-blue-50 text-3xl font-black text-blue-200"><ProductImageFallback src={imageUrl} name={product.name} categorySlug={product.category?.slug} className="h-full w-full object-contain" />{discount ? <span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-1 text-[10px] font-black text-white">-{discount}%</span> : null}</div><p className="mt-3 truncate text-[10px] font-bold uppercase tracking-wider text-slate-400">{product.brand?.name || 'TK'}</p><h3 className="mt-1 line-clamp-2 min-h-10 text-sm font-bold group-hover:text-blue-700">{product.name}</h3><p className="mt-2 font-black text-blue-700">{formatPrice(discount ? product.salePrice as number : product.price)}</p></Link>
 }
 
 function DetailSkeleton() {

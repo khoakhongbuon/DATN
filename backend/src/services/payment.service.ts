@@ -2,6 +2,7 @@ import { OrderStatus, PaymentMethod, PaymentStatus, Prisma } from '@prisma/clien
 import prisma from '../config/prisma'
 import * as vnpayService from './vnpay.service'
 import * as momoService from './momo.service'
+import * as bankTransferService from './bank-transfer.service'
 
 function paymentError(status: number, message: string): never {
   throw { status, message }
@@ -37,6 +38,27 @@ export type CreatePaymentOptions = {
   ipAddr?: string
 }
 
+export function getPaymentConfig() {
+  const bankConfig = bankTransferService.getBankTransferConfig()
+  const momoConfigured = momoService.isMomoConfigured()
+  const vnpayConfigured = vnpayService.isVnpayConfigured()
+
+  return {
+    codAvailable: true,
+    vnpayAvailable: vnpayConfigured,
+    momoAvailable: momoConfigured,
+    bankTransferAvailable: bankConfig.configured,
+    bankInfo: bankConfig.configured
+      ? {
+          bankId: bankConfig.bankId,
+          bankName: bankConfig.bankName,
+          accountNumber: bankConfig.bankAccountNumber,
+          accountName: bankConfig.bankAccountName,
+        }
+      : null,
+  }
+}
+
 export async function createPayment(
   userId: string,
   orderId: unknown,
@@ -46,6 +68,24 @@ export async function createPayment(
   validateOrderId(orderId)
   const paymentMethod = parsePaymentMethod(method)
 
+  // Pre-validate gateway availability before creating a database payment record
+  if (paymentMethod === PaymentMethod.MOMO && !momoService.isMomoConfigured()) {
+    paymentError(
+      503,
+      'Cổng thanh toán MoMo hiện chưa được cấu hình. Bạn có thể sử dụng phương thức Chuyển khoản ngân hàng (QR) hoặc COD thay thế.'
+    )
+  }
+  if (paymentMethod === PaymentMethod.VNPAY && !vnpayService.isVnpayConfigured()) {
+    paymentError(503, 'Cổng thanh toán VNPAY hiện chưa được cấu hình trên hệ thống.')
+  }
+  if (paymentMethod === PaymentMethod.BANK_TRANSFER && !bankTransferService.getBankTransferConfig().configured) {
+    paymentError(
+      503,
+      'Cổng thanh toán QR chuyển khoản ngân hàng hiện chưa được cấu hình. Vui lòng chọn phương thức thanh toán khác hoặc liên hệ bộ phận hỗ trợ.'
+    )
+  }
+
+  // 1. Transaction to validate order & prevent duplicate payment record
   const { payment, orderCode } = await prisma.$transaction(async (transaction) => {
     const order = await transaction.order.findFirst({
       where: { id: orderId, userId },
@@ -58,9 +98,11 @@ export async function createPayment(
 
     const existingPayment = await transaction.payment.findFirst({
       where: { orderId: order.id },
-      select: { id: true },
+      select: { id: true, method: true, status: true },
     })
-    if (existingPayment) paymentError(409, 'Payment already exists for this order')
+    if (existingPayment) {
+      paymentError(409, 'Payment already exists for this order')
+    }
 
     const created = await transaction.payment.create({
       data: {
@@ -75,8 +117,12 @@ export async function createPayment(
     return { payment: created, orderCode: order.orderCode }
   })
 
-  // If VNPAY, generate payment URL (including VNPAYQR support)
+  // 2. Gateway logic
+  // VNPAY
   if (paymentMethod === PaymentMethod.VNPAY) {
+    if (!vnpayService.isVnpayConfigured()) {
+      paymentError(503, 'Cổng thanh toán VNPAY hiện chưa được cấu hình trên hệ thống.')
+    }
     const paymentUrl = vnpayService.createVnpayPaymentUrl({
       paymentId: payment.id,
       orderCode,
@@ -87,8 +133,14 @@ export async function createPayment(
     return { ...payment, paymentUrl }
   }
 
-  // If MoMo, call sandbox create payment
+  // MoMo
   if (paymentMethod === PaymentMethod.MOMO) {
+    if (!momoService.isMomoConfigured()) {
+      paymentError(
+        503,
+        'Cổng thanh toán MoMo hiện chưa được cấu hình. Bạn có thể sử dụng phương thức Chuyển khoản ngân hàng (QR) hoặc COD thay thế.'
+      )
+    }
     const momoResult = await momoService.createMomoPayment({
       paymentId: payment.id,
       orderCode,
@@ -102,6 +154,25 @@ export async function createPayment(
     }
   }
 
+  // BANK_TRANSFER (VietQR)
+  if (paymentMethod === PaymentMethod.BANK_TRANSFER) {
+    const vietQrData = bankTransferService.generateVietQrData({
+      amount: payment.amount,
+      orderCode,
+    })
+    if (!vietQrData) {
+      paymentError(
+        400,
+        'Thông tin tài khoản ngân hàng nhận tiền chưa được cấu hình trên hệ thống (thiếu BANK_ID, BANK_ACCOUNT_NUMBER hoặc BANK_ACCOUNT_NAME). Vui lòng chọn COD hoặc liên hệ cửa hàng.'
+      )
+    }
+    return {
+      ...payment,
+      qrCodeUrl: vietQrData.qrCodeUrl,
+      bankTransfer: vietQrData,
+    }
+  }
+
   return payment
 }
 
@@ -111,9 +182,28 @@ export async function getPayment(userId: string, orderId: unknown, role?: string
   const payment = await prisma.payment.findFirst({
     where,
     orderBy: { createdAt: 'desc' },
-    select: paymentSelect,
+    select: {
+      ...paymentSelect,
+      order: {
+        select: { orderCode: true, total: true, status: true },
+      },
+    },
   })
   if (!payment) paymentError(404, 'Payment not found')
+
+  // If BANK_TRANSFER, attach dynamic VietQR data
+  if (payment.method === PaymentMethod.BANK_TRANSFER) {
+    const vietQrData = bankTransferService.generateVietQrData({
+      amount: payment.amount,
+      orderCode: payment.order.orderCode,
+    })
+    return {
+      ...payment,
+      qrCodeUrl: vietQrData?.qrCodeUrl,
+      bankTransfer: vietQrData,
+    }
+  }
+
   return payment
 }
 
@@ -155,6 +245,10 @@ export async function getVnpayUrl(
     paymentError(409, 'Order cannot be paid in its current status')
   }
 
+  if (!vnpayService.isVnpayConfigured()) {
+    paymentError(503, 'Cổng thanh toán VNPAY hiện chưa được cấu hình trên hệ thống.')
+  }
+
   let payment = await prisma.payment.findFirst({
     where: { orderId: order.id, method: PaymentMethod.VNPAY },
     orderBy: { createdAt: 'desc' },
@@ -162,7 +256,6 @@ export async function getVnpayUrl(
   })
 
   if (!payment) {
-    // If no payment exists yet, create one
     payment = await prisma.payment.create({
       data: {
         orderId: order.id,
@@ -198,6 +291,13 @@ export async function getMomoUrl(userId: string, orderId: unknown) {
     paymentError(409, 'Order cannot be paid in its current status')
   }
 
+  if (!momoService.isMomoConfigured()) {
+    paymentError(
+      503,
+      'Cổng thanh toán MoMo hiện chưa được cấu hình. Bạn có thể sử dụng phương thức Chuyển khoản ngân hàng (QR) thay thế.'
+    )
+  }
+
   let payment = await prisma.payment.findFirst({
     where: { orderId: order.id, method: PaymentMethod.MOMO },
     orderBy: { createdAt: 'desc' },
@@ -230,6 +330,126 @@ export async function getMomoUrl(userId: string, orderId: unknown) {
     qrCodeUrl: momoResult.qrCodeUrl,
     deeplink: momoResult.deeplink,
   }
+}
+
+export async function getBankTransferDetails(userId: string, orderId: unknown, role?: string) {
+  validateOrderId(orderId)
+  const where = role === 'ADMIN' ? { id: orderId } : { id: orderId, userId }
+  const order = await prisma.order.findFirst({
+    where,
+    select: { id: true, orderCode: true, total: true, status: true },
+  })
+  if (!order) paymentError(404, 'Order not found')
+
+  const vietQrData = bankTransferService.generateVietQrData({
+    amount: order.total,
+    orderCode: order.orderCode,
+  })
+
+  if (!vietQrData) {
+    paymentError(
+      400,
+      'Thông tin tài khoản ngân hàng nhận tiền chưa được cấu hình trên hệ thống. Vui lòng liên hệ quản trị viên.'
+    )
+  }
+
+  let payment = await prisma.payment.findFirst({
+    where: { orderId: order.id },
+    orderBy: { createdAt: 'desc' },
+    select: paymentSelect,
+  })
+
+  // If no payment exists and order is still payable, create BANK_TRANSFER pending payment
+  if (!payment && (order.status === OrderStatus.PENDING || order.status === OrderStatus.CONFIRMED)) {
+    payment = await prisma.payment.create({
+      data: {
+        orderId: order.id,
+        method: PaymentMethod.BANK_TRANSFER,
+        status: PaymentStatus.PENDING,
+        amount: order.total,
+      },
+      select: paymentSelect,
+    })
+  }
+
+  return {
+    payment,
+    bankTransfer: vietQrData,
+  }
+}
+
+/**
+ * Requirement 8 & 9: Manual admin confirmation of payment
+ * Idempotent, prevents duplicate confirmation, sets payment to PAID & order to CONFIRMED
+ */
+export async function confirmManualPayment(
+  orderId: unknown,
+  adminUserId: string,
+  transactionNote?: string
+) {
+  validateOrderId(orderId)
+
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      include: {
+        payments: { orderBy: { createdAt: 'desc' } },
+      },
+    })
+
+    if (!order) paymentError(404, 'Order not found')
+    if (order.status === OrderStatus.CANCELLED) {
+      paymentError(409, 'Không thể xác nhận thanh toán cho đơn hàng đã bị hủy')
+    }
+
+    let payment = order.payments[0]
+    const note = transactionNote?.trim() || `MANUAL-CONFIRM-ADMIN-${adminUserId.slice(-6)}-${Date.now()}`
+
+    if (!payment) {
+      payment = await tx.payment.create({
+        data: {
+          orderId: order.id,
+          method: PaymentMethod.BANK_TRANSFER,
+          status: PaymentStatus.PAID,
+          amount: order.total,
+          paidAt: new Date(),
+          transactionId: note,
+        },
+      })
+    } else if (payment.status === PaymentStatus.PAID) {
+      return {
+        alreadyConfirmed: true,
+        message: 'Thanh toán đơn hàng đã được xác nhận trước đó.',
+        payment,
+        order,
+      }
+    } else {
+      payment = await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: PaymentStatus.PAID,
+          paidAt: new Date(),
+          transactionId: payment.transactionId || note,
+        },
+      })
+    }
+
+    let updatedOrder = order
+    if (order.status === OrderStatus.PENDING) {
+      updatedOrder = await tx.order.update({
+        where: { id: order.id },
+        data: { status: OrderStatus.CONFIRMED },
+        include: { payments: true },
+      })
+    }
+
+    return {
+      alreadyConfirmed: false,
+      message: 'Xác nhận đã nhận thanh toán thành công.',
+      payment,
+      order: updatedOrder,
+    }
+  })
 }
 
 // Webhook delegates

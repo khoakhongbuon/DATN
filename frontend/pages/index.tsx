@@ -12,7 +12,7 @@ type Product = {
   salePrice?: number | null
   stock: number
   brand?: { name: string } | null
-  category?: { name: string } | null
+  category?: { name: string; slug?: string } | null
 }
 
 type ProductImage = {
@@ -238,7 +238,7 @@ function ProductGrid({ products, imageUrls, loading, error, emptyText }: { produ
 function ProductCard({ product, imageUrl }: ProductCardProps) {
   const discount = getDiscount(product)
   const displayPrice = product.salePrice && product.salePrice < product.price ? product.salePrice : product.price
-  return <Link href={`/products/${product.slug}`} className="group relative rounded-2xl border border-slate-200 bg-white p-4 transition duration-200 hover:-translate-y-1 hover:border-blue-300 hover:shadow-lg"><div className="relative flex h-44 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-slate-100 to-blue-50 text-4xl font-black text-blue-200"><ProductImageFallback src={imageUrl} name={product.name} width={320} height={220} loading="lazy" className="h-full w-full object-contain transition duration-300 group-hover:scale-105" />{discount ? <span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-1 text-[10px] font-black text-white">-{discount}%</span> : null}</div><p className="mt-4 truncate text-xs font-semibold uppercase tracking-wider text-slate-400">{product.brand?.name || product.category?.name || 'TK Select'}</p><h3 className="mt-2 line-clamp-2 min-h-[44px] text-sm font-bold text-slate-900 group-hover:text-blue-700">{product.name}</h3><p className="mt-3 text-lg font-black text-blue-700">{formatPrice(displayPrice)}</p>{discount ? <p className="mt-1 text-xs text-slate-400 line-through">{formatPrice(product.price)}</p> : null}<p className={`mt-3 text-xs font-semibold ${product.stock > 0 ? 'text-emerald-600' : 'text-red-500'}`}>{product.stock > 0 ? 'Còn hàng' : 'Hết hàng'}</p></Link>
+  return <Link href={`/products/${product.slug}`} className="group relative rounded-2xl border border-slate-200 bg-white p-4 transition duration-200 hover:-translate-y-1 hover:border-blue-300 hover:shadow-lg"><div className="relative flex h-44 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-slate-100 to-blue-50 text-4xl font-black text-blue-200"><ProductImageFallback src={imageUrl} name={product.name} categorySlug={product.category?.slug} width={320} height={220} loading="lazy" className="h-full w-full object-contain transition duration-300 group-hover:scale-105" />{discount ? <span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-1 text-[10px] font-black text-white">-{discount}%</span> : null}</div><p className="mt-4 truncate text-xs font-semibold uppercase tracking-wider text-slate-400">{product.brand?.name || product.category?.name || 'TK Select'}</p><h3 className="mt-2 line-clamp-2 min-h-[44px] text-sm font-bold text-slate-900 group-hover:text-blue-700">{product.name}</h3><p className="mt-3 text-lg font-black text-blue-700">{formatPrice(displayPrice)}</p>{discount ? <p className="mt-1 text-xs text-slate-400 line-through">{formatPrice(product.price)}</p> : null}<p className={`mt-3 text-xs font-semibold ${product.stock > 0 ? 'text-emerald-600' : 'text-red-500'}`}>{product.stock > 0 ? 'Còn hàng' : 'Hết hàng'}</p></Link>
 }
 
 function Icon({ children }: { children: ReactNode }) { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="h-9 w-9">{children}</svg> }

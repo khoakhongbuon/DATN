@@ -11,6 +11,13 @@ export type MomoConfig = {
   ipnUrl: string
 }
 
+export function isMomoConfigured(): boolean {
+  const partnerCode = process.env.MOMO_PARTNER_CODE?.trim()
+  const accessKey = process.env.MOMO_ACCESS_KEY?.trim()
+  const secretKey = process.env.MOMO_SECRET_KEY?.trim()
+  return Boolean(partnerCode && accessKey && secretKey)
+}
+
 export function getMomoConfig(): MomoConfig {
   const partnerCode = process.env.MOMO_PARTNER_CODE?.trim()
   const accessKey = process.env.MOMO_ACCESS_KEY?.trim()
@@ -19,7 +26,7 @@ export function getMomoConfig(): MomoConfig {
   if (!partnerCode || !accessKey || !secretKey) {
     throw {
       status: 503,
-      message: 'MoMo payment gateway is not configured (missing MOMO_PARTNER_CODE, MOMO_ACCESS_KEY, or MOMO_SECRET_KEY)',
+      message: 'Cổng thanh toán MoMo hiện chưa được cấu hình (thiếu thông tin kết nối API MoMo). Bạn có thể chọn Chuyển khoản QR ngân hàng hoặc COD thay thế.',
     }
   }
 
