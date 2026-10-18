@@ -1010,6 +1010,90 @@ async function seedPhase5() {
   console.log(`Phase 5 complete: totalAdded=${totalAdded}`)
 }
 
+async function seedCatalogImages() {
+  const verifiedExact: Record<string, { url: string; alt: string }> = {
+    'RYZ-7800X3D': {
+      url: '/images/products/amd_ryzen_7_7800x3d.jpg',
+      alt: 'AMD Ryzen 7 7800X3D Gaming Processor',
+    },
+    'GPU-ASUS-RTX4060-DUAL-8G': {
+      url: 'https://dlcdnwebimgs.asus.com/gain/ec0565b6-9765-4b27-9147-f58e6eef7a60/w692',
+      alt: 'ASUS Dual GeForce RTX 4060 OC 8GB GDDR6',
+    },
+    'GPU-MSI-RTX4060-VENTUS2X-8G': {
+      url: 'https://storage-asset.msi.com/global/picture/image/feature/vga/NVIDIA/RTX-4060-VENTUS-2X-BLACK-8G/images/msi-rtx4060-ventus-2x-black-8g-kv-mobile.png',
+      alt: 'MSI GeForce RTX 4060 Ventus 2X Black 8G OC',
+    },
+    'PSU-CORSAIR-CV550-550W': {
+      url: '/images/products/corsair_cv550.webp',
+      alt: 'Corsair CV550 550W 80 Plus Bronze Power Supply',
+    },
+    'CASE-CORSAIR-4000D-AIRFLOW-BLK': {
+      url: '/images/products/corsair_4000d_black.webp',
+      alt: 'Corsair 4000D Airflow Mid-Tower Tempered Glass Black Case',
+    },
+    'RAM-CORSAIR-LPX-16G-3200': {
+      url: '/images/products/corsair_lpx_ddr4.webp',
+      alt: 'Corsair Vengeance LPX 16GB DDR4 3200MHz Memory Kit',
+    },
+    'SSD-SAMSUNG-970EVO-500G': {
+      url: '/images/products/samsung_970_evo_plus.jpg',
+      alt: 'Samsung 970 EVO Plus 500GB M.2 NVMe PCIe 3.0 SSD',
+    },
+    'MOU-LOGI-GPX-SL2-BK': {
+      url: '/images/products/logitech_gpx_superlight2_black.png',
+      alt: 'Logitech G Pro X Superlight 2 Lightspeed Wireless Mouse Black',
+    },
+    'KB-LOGI-GPRO-X-TKL-MG': {
+      url: '/images/products/logitech_gpro_x_tkl_magenta.png',
+      alt: 'Logitech G PRO X TKL Lightspeed Wireless Keyboard Magenta',
+    },
+  }
+
+  const allProducts = await prisma.product.findMany({
+    select: { id: true, sku: true, name: true, category: { select: { slug: true } } },
+  })
+
+  let createdCount = 0
+  let updatedCount = 0
+
+  for (const prod of allProducts) {
+    const exact = verifiedExact[prod.sku]
+    const catSlug = prod.category?.slug || 'cpu'
+    const targetUrl = exact ? exact.url : `/images/products/placeholders/${catSlug}.svg`
+    const targetAlt = exact ? exact.alt : `${prod.name} - Đang cập nhật hình ảnh chính thức`
+
+    const existing = await prisma.productImage.findFirst({
+      where: { productId: prod.id },
+      orderBy: { sortOrder: 'asc' },
+    })
+
+    if (!existing) {
+      await prisma.productImage.create({
+        data: {
+          productId: prod.id,
+          url: targetUrl,
+          alt: targetAlt,
+          sortOrder: 0,
+        },
+      })
+      createdCount++
+    } else if (existing.url !== targetUrl || existing.alt !== targetAlt) {
+      await prisma.productImage.update({
+        where: { id: existing.id },
+        data: {
+          url: targetUrl,
+          alt: targetAlt,
+          sortOrder: 0,
+        },
+      })
+      updatedCount++
+    }
+  }
+
+  console.log(`Product images synchronized: created=${createdCount}, updated=${updatedCount}, totalProducts=${allProducts.length}`)
+}
+
 async function main() {
   const cpusBefore = await prisma.product.findMany({
     where: { category: { slug: 'cpu' } },
@@ -2397,6 +2481,7 @@ async function main() {
   await seedPhase3Storage()
   await seedPhase4()
   await seedPhase5()
+  await seedCatalogImages()
   const protectedProductsAfter = await prisma.product.findMany({
     where: { sku: { in: protectedSampleSkus } },
     select: {
