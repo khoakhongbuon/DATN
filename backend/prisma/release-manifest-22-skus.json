@@ -1,0 +1,945 @@
+{
+  "manifestVersion": "1.0.0-production-release",
+  "releasedAt": "2026-10-21T16:03:51.601Z",
+  "environment": "production",
+  "totalTargetSkus": 22,
+  "summary": {
+    "totalTargetSkus": 22,
+    "userApprovedCount": 22,
+    "releasedCount": 22,
+    "userApprovedSourceExceptionsCount": 1,
+    "blockedCount": 0
+  },
+  "fileCopiesExecuted": [
+    {
+      "sku": "COOL-ARCTIC-LIQUID-FREEZER-III-240",
+      "productName": "Arctic Liquid Freezer III 240 Black AIO",
+      "sourceStaging": "frontend/public/images/products/staging/cool_arctic_liquid_freezer_iii_240_v2.jpg",
+      "targetProduction": "frontend/public/images/products/cool_arctic_liquid_freezer_iii_240_v2.jpg",
+      "filename": "cool_arctic_liquid_freezer_iii_240_v2.jpg",
+      "sizeBytes": 81964,
+      "magicType": "image/jpeg",
+      "md5": "00bf6cf75ea64dbff699f3c7f0dd03ae"
+    },
+    {
+      "sku": "COOL-DEEPCOOL-AG400-ARGB",
+      "productName": "DeepCool AG400 ARGB Single Tower",
+      "sourceStaging": "frontend/public/images/products/staging/cool_deepcool_ag400_argb_v2.webp",
+      "targetProduction": "frontend/public/images/products/cool_deepcool_ag400_argb_v2.webp",
+      "filename": "cool_deepcool_ag400_argb_v2.webp",
+      "sizeBytes": 38006,
+      "magicType": "image/webp",
+      "md5": "43483644c89acc9fbe081220469dc916"
+    },
+    {
+      "sku": "COOL-DEEPCOOL-AK620-ZERO-DARK",
+      "productName": "DeepCool AK620 Zero Dark Dual Tower",
+      "sourceStaging": "frontend/public/images/products/staging/cool_deepcool_ak620_zero_dark_v2.webp",
+      "targetProduction": "frontend/public/images/products/cool_deepcool_ak620_zero_dark_v2.webp",
+      "filename": "cool_deepcool_ak620_zero_dark_v2.webp",
+      "sizeBytes": 57156,
+      "magicType": "image/webp",
+      "md5": "d37c8b04fe42c3084464a7fd3b0ef94e"
+    },
+    {
+      "sku": "COOL-NOCTUA-NH-D15-CHROMAX",
+      "productName": "Noctua NH-D15 chromax.black Dual Tower Flagship",
+      "sourceStaging": "frontend/public/images/products/staging/cool_noctua_nh_d15_chromax_v2.jpg",
+      "targetProduction": "frontend/public/images/products/cool_noctua_nh_d15_chromax_v2.jpg",
+      "filename": "cool_noctua_nh_d15_chromax_v2.jpg",
+      "sizeBytes": 243883,
+      "magicType": "image/jpeg",
+      "md5": "470f704c01bc424bf44edb0406d0460f"
+    },
+    {
+      "sku": "CPU-AMD-R5-5500",
+      "productName": "AMD Ryzen 5 5500",
+      "sourceStaging": "frontend/public/images/products/staging/cpu_amd_ryzen_5_5500_v2.jpg",
+      "targetProduction": "frontend/public/images/products/cpu_amd_ryzen_5_5500_v2.jpg",
+      "filename": "cpu_amd_ryzen_5_5500_v2.jpg",
+      "sizeBytes": 144752,
+      "magicType": "image/jpeg",
+      "md5": "4d4a6f64af84334e2f510a77399e97cd"
+    },
+    {
+      "sku": "CPU-AMD-R5-5600",
+      "productName": "AMD Ryzen 5 5600",
+      "sourceStaging": "frontend/public/images/products/staging/cpu_amd_ryzen_5_5600_v2.jpg",
+      "targetProduction": "frontend/public/images/products/cpu_amd_ryzen_5_5600_v2.jpg",
+      "filename": "cpu_amd_ryzen_5_5600_v2.jpg",
+      "sizeBytes": 145761,
+      "magicType": "image/jpeg",
+      "md5": "71e187087e3d4f044a040ba05e17fee0"
+    },
+    {
+      "sku": "CPU-AMD-R5-7600X",
+      "productName": "AMD Ryzen 5 7600X",
+      "sourceStaging": "frontend/public/images/products/staging/cpu_amd_ryzen_5_7600x_v2.jpg",
+      "targetProduction": "frontend/public/images/products/cpu_amd_ryzen_5_7600x_v2.jpg",
+      "filename": "cpu_amd_ryzen_5_7600x_v2.jpg",
+      "sizeBytes": 107222,
+      "magicType": "image/jpeg",
+      "md5": "a1ad50858ffe8f95626d3d92c4a6b0c4"
+    },
+    {
+      "sku": "CPU-AMD-R7-5700X3D",
+      "productName": "AMD Ryzen 7 5700X3D",
+      "sourceStaging": "frontend/public/images/products/staging/cpu_amd_ryzen_7_5700x3d_v2.jpg",
+      "targetProduction": "frontend/public/images/products/cpu_amd_ryzen_7_5700x3d_v2.jpg",
+      "filename": "cpu_amd_ryzen_7_5700x3d_v2.jpg",
+      "sizeBytes": 73835,
+      "magicType": "image/jpeg",
+      "md5": "568a8a1090d85fa46f6f4b98c4521a2e"
+    },
+    {
+      "sku": "CPU-AMD-R7-9700X",
+      "productName": "AMD Ryzen 7 9700X",
+      "sourceStaging": "frontend/public/images/products/staging/cpu_amd_ryzen_7_9700x_v2.jpg",
+      "targetProduction": "frontend/public/images/products/cpu_amd_ryzen_7_9700x_v2.jpg",
+      "filename": "cpu_amd_ryzen_7_9700x_v2.jpg",
+      "sizeBytes": 707993,
+      "magicType": "image/png",
+      "md5": "df0aa8f5521f4675d052fd44eb845349"
+    },
+    {
+      "sku": "CPU-AMD-R9-7900X",
+      "productName": "AMD Ryzen 9 7900X",
+      "sourceStaging": "frontend/public/images/products/staging/cpu_amd_ryzen_9_7900x_v2.jpg",
+      "targetProduction": "frontend/public/images/products/cpu_amd_ryzen_9_7900x_v2.jpg",
+      "filename": "cpu_amd_ryzen_9_7900x_v2.jpg",
+      "sizeBytes": 118448,
+      "magicType": "image/jpeg",
+      "md5": "d1755514b9e2b2780de338e1a7447548"
+    },
+    {
+      "sku": "CPU-INTEL-13400F",
+      "productName": "Intel Core i5-13400F",
+      "sourceStaging": "frontend/public/images/products/staging/cpu_intel_core_i5_13400f_v2.jpg",
+      "targetProduction": "frontend/public/images/products/cpu_intel_core_i5_13400f_v2.jpg",
+      "filename": "cpu_intel_core_i5_13400f_v2.jpg",
+      "sizeBytes": 346268,
+      "magicType": "image/png",
+      "md5": "7b904067381c90eaa1bf9aaa0fbc0e7f"
+    },
+    {
+      "sku": "CPU-INTEL-13600K",
+      "productName": "Intel Core i5-13600K",
+      "sourceStaging": "frontend/public/images/products/staging/cpu_intel_core_i5_13600k_v2.jpg",
+      "targetProduction": "frontend/public/images/products/cpu_intel_core_i5_13600k_v2.jpg",
+      "filename": "cpu_intel_core_i5_13600k_v2.jpg",
+      "sizeBytes": 105130,
+      "magicType": "image/jpeg",
+      "md5": "5741f9e3f3e239e2179fb8a7f6da27c3"
+    },
+    {
+      "sku": "CPU-INTEL-14400F",
+      "productName": "Intel Core i5-14400F",
+      "sourceStaging": "frontend/public/images/products/staging/cpu_intel_core_i5_14400f_v2.jpg",
+      "targetProduction": "frontend/public/images/products/cpu_intel_core_i5_14400f_v2.jpg",
+      "filename": "cpu_intel_core_i5_14400f_v2.jpg",
+      "sizeBytes": 82567,
+      "magicType": "image/jpeg",
+      "md5": "3fd1e62042be7691c5be976452730d54"
+    },
+    {
+      "sku": "CPU-INTEL-13700K",
+      "productName": "Intel Core i7-13700K",
+      "sourceStaging": "frontend/public/images/products/staging/cpu_intel_core_i7_13700k_v2.jpg",
+      "targetProduction": "frontend/public/images/products/cpu_intel_core_i7_13700k_v2.jpg",
+      "filename": "cpu_intel_core_i7_13700k_v2.jpg",
+      "sizeBytes": 99151,
+      "magicType": "image/jpeg",
+      "md5": "8671ff335323d3027e7fd00177bace01"
+    },
+    {
+      "sku": "CPU-INTEL-14100F",
+      "productName": "Intel Core i3-14100F",
+      "sourceStaging": "frontend/public/images/products/staging/cpu_intel_core_i3_14100f_v2.jpg",
+      "targetProduction": "frontend/public/images/products/cpu_intel_core_i3_14100f_v2.jpg",
+      "filename": "cpu_intel_core_i3_14100f_v2.jpg",
+      "sizeBytes": 87068,
+      "magicType": "image/jpeg",
+      "md5": "b9e1dfd8ea338af8d226c306780d956c"
+    },
+    {
+      "sku": "MON-AOC-24G4-24-FHD",
+      "productName": "AOC Gaming 24G4 23.8 inch FHD Fast IPS 180Hz",
+      "sourceStaging": "frontend/public/images/products/staging/mon_aoc_24g4_24_fhd_v2.png",
+      "targetProduction": "frontend/public/images/products/mon_aoc_24g4_24_fhd_v2.png",
+      "filename": "mon_aoc_24g4_24_fhd_v2.png",
+      "sizeBytes": 575519,
+      "magicType": "image/png",
+      "md5": "157ef3617325e120e59a3d84ffcb4aa6"
+    },
+    {
+      "sku": "MON-ASUS-TUF-VG279Q3A-27-FHD",
+      "productName": "ASUS TUF Gaming VG279Q3A 27 inch FHD Fast IPS 180Hz",
+      "sourceStaging": "frontend/public/images/products/staging/mon_asus_tuf_vg279q3a_27_fhd_v2.jpg",
+      "targetProduction": "frontend/public/images/products/mon_asus_tuf_vg279q3a_27_fhd_v2.jpg",
+      "filename": "mon_asus_tuf_vg279q3a_27_fhd_v2.jpg",
+      "sizeBytes": 448008,
+      "magicType": "image/png",
+      "md5": "44be74d1e8866acbce175daf4456dcef"
+    },
+    {
+      "sku": "MOU-LOGI-MX-MASTER-3S",
+      "productName": "Logitech MX Master 3S Wireless Graphite",
+      "sourceStaging": "frontend/public/images/products/staging/mou_logitech_mx_master_3s_graphite_v2.png",
+      "targetProduction": "frontend/public/images/products/mou_logitech_mx_master_3s_graphite_v2.png",
+      "filename": "mou_logitech_mx_master_3s_graphite_v2.png",
+      "sizeBytes": 1413902,
+      "magicType": "image/png",
+      "md5": "3e07814d74600b45ecd558c944d26769"
+    },
+    {
+      "sku": "PSU-CORSAIR-RM750E-750W",
+      "productName": "Corsair RM750e 750W 80 Plus Gold ATX 3.0",
+      "sourceStaging": "frontend/public/images/products/staging/psu_corsair_rm750e_750w_v2.png",
+      "targetProduction": "frontend/public/images/products/psu_corsair_rm750e_750w_v2.png",
+      "filename": "psu_corsair_rm750e_750w_v2.png",
+      "sizeBytes": 544960,
+      "magicType": "image/png",
+      "md5": "30e9e061125ab425b593a72c369e5b39"
+    },
+    {
+      "sku": "SSD-ADATA-S70BLADE-1TB",
+      "productName": "ADATA XPG GAMMIX S70 BLADE 1TB M.2 PCIe 4.0",
+      "sourceStaging": "frontend/public/images/products/staging/ssd_adata_s70_blade_1tb_v2.jpg",
+      "targetProduction": "frontend/public/images/products/ssd_adata_s70_blade_1tb_v2.jpg",
+      "filename": "ssd_adata_s70_blade_1tb_v2.jpg",
+      "sizeBytes": 58763,
+      "magicType": "image/jpeg",
+      "md5": "690d9f540177d6ea332afb707303b5bc"
+    },
+    {
+      "sku": "SSD-CRUCIAL-P3-1TB",
+      "productName": "Crucial P3 1TB M.2 NVMe PCIe 3.0",
+      "sourceStaging": "frontend/public/images/products/staging/ssd_crucial_p3_1tb_v2.jpg",
+      "targetProduction": "frontend/public/images/products/ssd_crucial_p3_1tb_v2.jpg",
+      "filename": "ssd_crucial_p3_1tb_v2.jpg",
+      "sizeBytes": 118769,
+      "magicType": "image/jpeg",
+      "md5": "dc7578d7bea06b7e73c7ec87f5942b14"
+    },
+    {
+      "sku": "SSD-CRUCIAL-T500-1TB",
+      "productName": "Crucial T500 1TB M.2 NVMe PCIe 4.0",
+      "sourceStaging": "frontend/public/images/products/staging/ssd_crucial_t500_1tb_v2.jpg",
+      "targetProduction": "frontend/public/images/products/ssd_crucial_t500_1tb_v2.jpg",
+      "filename": "ssd_crucial_t500_1tb_v2.jpg",
+      "sizeBytes": 62203,
+      "magicType": "image/jpeg",
+      "md5": "10a36d45d4c0a08e40c979c851587ed5"
+    }
+  ],
+  "releasedItems": [
+    {
+      "sku": "COOL-ARCTIC-LIQUID-FREEZER-III-240",
+      "productName": "Arctic Liquid Freezer III 240 Black AIO",
+      "brand": "Arctic",
+      "category": "CPU Cooler",
+      "partNumber": "ACFRE00134A",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/cool_arctic_liquid_freezer_iii_240_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/cool_arctic_liquid_freezer_iii_240_v2.jpg",
+        "productionUrl": "/images/products/cool_arctic_liquid_freezer_iii_240_v2.jpg",
+        "fileSize": 81964,
+        "magicType": "image/jpeg",
+        "md5Hash": "00bf6cf75ea64dbff699f3c7f0dd03ae"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "COOL-ARCTIC-LIQUID-FREEZER-III-240",
+        "newUrl": "/images/products/cool_arctic_liquid_freezer_iii_240_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/arctic-cooling-liquid-freezer-iii-240-liquid-cooling-system/p/N82E16835186272",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/35-186-272-01.jpg",
+        "matchingEvidence": "Tản nhiệt nước Arctic Liquid Freezer III 240 Black AIO gồm két nước tản nhiệt 240mm, hai quạt P12 PWM PST và block bơm tích hợp quạt làm mát VRM. Khớp MPN ACFRE00134A / Newegg 35-186-272."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:24:19.885Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "COOL-DEEPCOOL-AG400-ARGB",
+      "productName": "DeepCool AG400 ARGB Single Tower",
+      "brand": "DeepCool",
+      "category": "CPU Cooler",
+      "partNumber": "R-AG400-BKANMC-G-1",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/cool_deepcool_ag400_argb_v2.webp",
+        "targetProductionPath": "frontend/public/images/products/cool_deepcool_ag400_argb_v2.webp",
+        "productionUrl": "/images/products/cool_deepcool_ag400_argb_v2.webp",
+        "fileSize": 38006,
+        "magicType": "image/webp",
+        "md5Hash": "43483644c89acc9fbe081220469dc916"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "COOL-DEEPCOOL-AG400-ARGB",
+        "newUrl": "/images/products/cool_deepcool_ag400_argb_v2.webp"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.deepcool.com/products/Cooling/cpuaircoolers/AG400-BK-ARGB-Single-Tower-CPU-Cooler-1700-AM5/2022/16091.shtml",
+        "directImageUrl": "https://cdn.deepcool.com/public/ProductFile/DEEPCOOL/Cooling/CPUAirCoolers/AG400_BK_ARGB/Gallery/800X800/01.jpg",
+        "matchingEvidence": "Ảnh chính hãng từ CDN DeepCool cho AG400 BK ARGB Single Tower. Hiển thị tháp tản nhiệt 4 ống đồng sơn tĩnh điện màu đen cùng quạt 120mm ARGB phát sáng đa sắc. Khớp model R-AG400-BKANMC-G-1."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:45.760Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "COOL-DEEPCOOL-AK620-ZERO-DARK",
+      "productName": "DeepCool AK620 Zero Dark Dual Tower",
+      "brand": "DeepCool",
+      "category": "CPU Cooler",
+      "partNumber": "R-AK620-BKNNMT-G-1",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/cool_deepcool_ak620_zero_dark_v2.webp",
+        "targetProductionPath": "frontend/public/images/products/cool_deepcool_ak620_zero_dark_v2.webp",
+        "productionUrl": "/images/products/cool_deepcool_ak620_zero_dark_v2.webp",
+        "fileSize": 57156,
+        "magicType": "image/webp",
+        "md5Hash": "d37c8b04fe42c3084464a7fd3b0ef94e"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "COOL-DEEPCOOL-AK620-ZERO-DARK",
+        "newUrl": "/images/products/cool_deepcool_ak620_zero_dark_v2.webp"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.deepcool.com/products/Cooling/cpuaircoolers/AK620-ZERO-DARK-High-Performance-CPU-Cooler-1700-AM5/2022/16124.shtml",
+        "directImageUrl": "https://cdn.deepcool.com/public/ProductFile/DEEPCOOL/Cooling/CPUAirCoolers/AK620_ZERO_DARK/Gallery/800X800/01.jpg",
+        "matchingEvidence": "Ảnh chính hãng từ CDN DeepCool cho AK620 Zero Dark High-Performance Dual-Tower CPU Cooler. Thiết kế hai tháp tản nhiệt 6 ống đồng sơn tĩnh điện toàn bộ màu đen mờ (Zero Dark), 2 quạt FK120 FDB và hai nắp che hoa văn ma trận vuông với logo DeepCool xanh teal tinh tế. Khớp chính xác model R-AK620-BKNNMT-G-1."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:46.218Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "COOL-NOCTUA-NH-D15-CHROMAX",
+      "productName": "Noctua NH-D15 chromax.black Dual Tower Flagship",
+      "brand": "Noctua",
+      "category": "CPU Cooler",
+      "partNumber": "NH-D15-CH-BK",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/cool_noctua_nh_d15_chromax_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/cool_noctua_nh_d15_chromax_v2.jpg",
+        "productionUrl": "/images/products/cool_noctua_nh_d15_chromax_v2.jpg",
+        "fileSize": 243883,
+        "magicType": "image/jpeg",
+        "md5Hash": "470f704c01bc424bf44edb0406d0460f"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "COOL-NOCTUA-NH-D15-CHROMAX",
+        "newUrl": "/images/products/cool_noctua_nh_d15_chromax_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/noctua-nh-d15-chromax-black-dual-tower-cpu-cooler/p/13C-0005-001H6",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/AYTVS230413152MJ7CD.jpg",
+        "matchingEvidence": "Tản nhiệt khí cao cấp Noctua NH-D15 chromax.black thiết kế tháp đôi (dual tower) 6 ống đồng toàn bộ phủ màu đen mờ, đi kèm 2 quạt NF-A15 PWM chromax.black và hộp bán lẻ chính hãng. Khớp MPN NH-D15-CH-BK."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:46.992Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "CPU-AMD-R5-5500",
+      "productName": "AMD Ryzen 5 5500",
+      "brand": "AMD",
+      "category": "CPU",
+      "partNumber": "100-100000457BOX",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/cpu_amd_ryzen_5_5500_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/cpu_amd_ryzen_5_5500_v2.jpg",
+        "productionUrl": "/images/products/cpu_amd_ryzen_5_5500_v2.jpg",
+        "fileSize": 144752,
+        "magicType": "image/jpeg",
+        "md5Hash": "4d4a6f64af84334e2f510a77399e97cd"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "CPU-AMD-R5-5500",
+        "newUrl": "/images/products/cpu_amd_ryzen_5_5500_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/amd-ryzen-5-5500-ryzen-5-5000-series/p/N82E16819113737",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/19-113-737-V02.jpg",
+        "matchingEvidence": "Mặt trước hộp bán lẻ AMD Ryzen 5 5500 có ô cửa sổ trong suốt để lộ trực tiếp chip vi xử lý Ryzen 5 5500, khớp part number 100-100000457BOX."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:47.625Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "CPU-AMD-R5-5600",
+      "productName": "AMD Ryzen 5 5600",
+      "brand": "AMD",
+      "category": "CPU",
+      "partNumber": "100-100000927BOX",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/cpu_amd_ryzen_5_5600_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/cpu_amd_ryzen_5_5600_v2.jpg",
+        "productionUrl": "/images/products/cpu_amd_ryzen_5_5600_v2.jpg",
+        "fileSize": 145761,
+        "magicType": "image/jpeg",
+        "md5Hash": "71e187087e3d4f044a040ba05e17fee0"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "CPU-AMD-R5-5600",
+        "newUrl": "/images/products/cpu_amd_ryzen_5_5600_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/amd-ryzen-5-5600-ryzen-5-5000-series-vermeer-zen-3-socket-am4/p/N82E16819113736",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/19-113-736-V02.jpg",
+        "matchingEvidence": "Mặt trước hộp bán lẻ chính hãng AMD Ryzen 5 5600 có ô cửa sổ trong suốt để lộ trực tiếp chip CPU AMD Ryzen 5 5600 bên trong, khớp part number 100-100000927BOX socket AM4."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:48.084Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "CPU-AMD-R5-7600X",
+      "productName": "AMD Ryzen 5 7600X",
+      "brand": "AMD",
+      "category": "CPU",
+      "partNumber": "100-100000593WOF",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/cpu_amd_ryzen_5_7600x_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/cpu_amd_ryzen_5_7600x_v2.jpg",
+        "productionUrl": "/images/products/cpu_amd_ryzen_5_7600x_v2.jpg",
+        "fileSize": 107222,
+        "magicType": "image/jpeg",
+        "md5Hash": "a1ad50858ffe8f95626d3d92c4a6b0c4"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "CPU-AMD-R5-7600X",
+        "newUrl": "/images/products/cpu_amd_ryzen_5_7600x_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/amd-ryzen-5-7600x-ryzen-5-7000-series-raphael-zen-4-socket-am5/p/N82E16819113770",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/19-113-770-02.jpg",
+        "matchingEvidence": "Mặt trước vỏ hộp bán lẻ AMD Ryzen 5 7600X thiết kế Zen 4 đặc trưng với số 5 lớn màu cam và nhãn 7000 Series Processor, khớp part number 100-100000593WOF."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:27:50.240Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "CPU-AMD-R7-5700X3D",
+      "productName": "AMD Ryzen 7 5700X3D",
+      "brand": "AMD",
+      "category": "CPU",
+      "partNumber": "100-100001503WOF",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/cpu_amd_ryzen_7_5700x3d_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/cpu_amd_ryzen_7_5700x3d_v2.jpg",
+        "productionUrl": "/images/products/cpu_amd_ryzen_7_5700x3d_v2.jpg",
+        "fileSize": 73835,
+        "magicType": "image/jpeg",
+        "md5Hash": "568a8a1090d85fa46f6f4b98c4521a2e"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "CPU-AMD-R7-5700X3D",
+        "newUrl": "/images/products/cpu_amd_ryzen_7_5700x3d_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/amd-ryzen-7-5700x3d-ryzen-7-5000-series/p/N82E16819113812",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/19-113-734-S04.jpg",
+        "matchingEvidence": "Mặt trước hộp bán lẻ AMD Ryzen 7 5700X3D với dải băng bạc độc quyền ghi rõ \"AMD 3D V-CACHE TECHNOLOGY\", số 7 lớn và nhãn Ryzen 7 5000 Series, khớp MPN 100-100001503WOF."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:27:49.579Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED_SOURCE_EXCEPTION",
+      "sourceAuditWarning": {
+        "note": "URL ảnh nguồn (19-113-734-S04.jpg) thuộc mã Newegg 19-113-734 (Ryzen 7 5800X3D). Newegg dùng chung ảnh này cho trang 5700X3D (19-113-812). Người dùng đã trực tiếp xác nhận ảnh được chấp nhận và yêu cầu phát hành.",
+        "userDirective": "RELEASE_CONFIRMED_BY_USER"
+      }
+    },
+    {
+      "sku": "CPU-AMD-R7-9700X",
+      "productName": "AMD Ryzen 7 9700X",
+      "brand": "AMD",
+      "category": "CPU",
+      "partNumber": "100-100001404WOF",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/cpu_amd_ryzen_7_9700x_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/cpu_amd_ryzen_7_9700x_v2.jpg",
+        "productionUrl": "/images/products/cpu_amd_ryzen_7_9700x_v2.jpg",
+        "fileSize": 707993,
+        "magicType": "image/png",
+        "md5Hash": "df0aa8f5521f4675d052fd44eb845349"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "CPU-AMD-R7-9700X",
+        "newUrl": "/images/products/cpu_amd_ryzen_7_9700x_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/amd-ryzen-7-9700x-ryzen-7-9000-series-granite-ridge-socket-am5/p/N82E16819113843",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/19-113-843-01.jpg",
+        "matchingEvidence": "Mặt trước vỏ hộp bán lẻ chính hãng AMD Ryzen 7 9700X kiến trúc Zen 5 với dòng chữ \"9000 SERIES PROCESSOR\" và số 7 nổi bật, khớp part number 100-100001404WOF."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:27:51.079Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "CPU-AMD-R9-7900X",
+      "productName": "AMD Ryzen 9 7900X",
+      "brand": "AMD",
+      "category": "CPU",
+      "partNumber": "100-100000589WOF",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/cpu_amd_ryzen_9_7900x_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/cpu_amd_ryzen_9_7900x_v2.jpg",
+        "productionUrl": "/images/products/cpu_amd_ryzen_9_7900x_v2.jpg",
+        "fileSize": 118448,
+        "magicType": "image/jpeg",
+        "md5Hash": "d1755514b9e2b2780de338e1a7447548"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "CPU-AMD-R9-7900X",
+        "newUrl": "/images/products/cpu_amd_ryzen_9_7900x_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/amd-ryzen-9-7900x-ryzen-9-7000-series-raphael-zen-4-socket-am5/p/N82E16819113769",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/19-113-769-02.jpg",
+        "matchingEvidence": "Mặt trước vỏ hộp phân khúc cao cấp (dày) của AMD Ryzen 9 7900X với số 9 lớn màu cam đặc trưng của dòng Ryzen 9 Raphael Zen 4, khớp part number 100-100000589WOF."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:49.927Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "CPU-INTEL-13400F",
+      "productName": "Intel Core i5-13400F",
+      "brand": "Intel",
+      "category": "CPU",
+      "partNumber": "BX8071513400F",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/cpu_intel_core_i5_13400f_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/cpu_intel_core_i5_13400f_v2.jpg",
+        "productionUrl": "/images/products/cpu_intel_core_i5_13400f_v2.jpg",
+        "fileSize": 346268,
+        "magicType": "image/png",
+        "md5Hash": "7b904067381c90eaa1bf9aaa0fbc0e7f"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "CPU-INTEL-13400F",
+        "newUrl": "/images/products/cpu_intel_core_i5_13400f_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/intel-core-i5-13400f-core-i5-13th-gen/p/N82E16819118431",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/19-118-431-02.jpg",
+        "matchingEvidence": "Mặt trước vỏ hộp bán lẻ Intel Core i5-13400F thế hệ 13 màu xanh dương có dải đen ghi rõ \"DISCRETE GRAPHICS REQUIRED\", logo i5 và \"10 CORES\", khớp part number BX8071513400F."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:50.272Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "CPU-INTEL-13600K",
+      "productName": "Intel Core i5-13600K",
+      "brand": "Intel",
+      "category": "CPU",
+      "partNumber": "BX8071513600K",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/cpu_intel_core_i5_13600k_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/cpu_intel_core_i5_13600k_v2.jpg",
+        "productionUrl": "/images/products/cpu_intel_core_i5_13600k_v2.jpg",
+        "fileSize": 105130,
+        "magicType": "image/jpeg",
+        "md5Hash": "5741f9e3f3e239e2179fb8a7f6da27c3"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "CPU-INTEL-13600K",
+        "newUrl": "/images/products/cpu_intel_core_i5_13600k_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/intel-core-i5-13600k-core-i5-13th-gen/p/N82E16819118416",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/19-118-416-V01.jpg",
+        "matchingEvidence": "Mặt trước vỏ hộp bán lẻ Intel Core i5-13600K thế hệ 13 mở khóa ép xung với dải màu vàng đen ghi rõ chữ \"UNLOCKED\", logo Intel Core i5 và viền họa tiết mạch bán dẫn, khớp part number BX8071513600K."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:50.635Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "CPU-INTEL-14400F",
+      "productName": "Intel Core i5-14400F",
+      "brand": "Intel",
+      "category": "CPU",
+      "partNumber": "BX8071514400F",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/cpu_intel_core_i5_14400f_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/cpu_intel_core_i5_14400f_v2.jpg",
+        "productionUrl": "/images/products/cpu_intel_core_i5_14400f_v2.jpg",
+        "fileSize": 82567,
+        "magicType": "image/jpeg",
+        "md5Hash": "3fd1e62042be7691c5be976452730d54"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "CPU-INTEL-14400F",
+        "newUrl": "/images/products/cpu_intel_core_i5_14400f_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/intel-core-i5-14400f-core-i5-14th-gen/p/N82E16819118489",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/19-118-489-01.jpg",
+        "matchingEvidence": "Mặt trước vỏ hộp bán lẻ Intel Core i5-14400F thế hệ 14 Raptor Lake Refresh với dòng chữ \"14th GEN\", dải đen \"DISCRETE GRAPHICS REQUIRED\" và logo i5, khớp part number BX8071514400F."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:52.697Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "CPU-INTEL-13700K",
+      "productName": "Intel Core i7-13700K",
+      "brand": "Intel",
+      "category": "CPU",
+      "partNumber": "BX8071513700K",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/cpu_intel_core_i7_13700k_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/cpu_intel_core_i7_13700k_v2.jpg",
+        "productionUrl": "/images/products/cpu_intel_core_i7_13700k_v2.jpg",
+        "fileSize": 99151,
+        "magicType": "image/jpeg",
+        "md5Hash": "8671ff335323d3027e7fd00177bace01"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "CPU-INTEL-13700K",
+        "newUrl": "/images/products/cpu_intel_core_i7_13700k_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/intel-core-i7-13700k-core-i7-13th-gen/p/N82E16819118414",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/19-118-414-V01.jpg",
+        "matchingEvidence": "Mặt trước vỏ hộp bán lẻ Intel Core i7-13700K thế hệ 13 mở khóa ép xung với dải màu vàng đen ghi rõ chữ \"UNLOCKED\", logo Intel Core i7 và \"16 CORES\", khớp part number BX8071513700K."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:51.649Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "CPU-INTEL-14100F",
+      "productName": "Intel Core i3-14100F",
+      "brand": "Intel",
+      "category": "CPU",
+      "partNumber": "BX8071514100F",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/cpu_intel_core_i3_14100f_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/cpu_intel_core_i3_14100f_v2.jpg",
+        "productionUrl": "/images/products/cpu_intel_core_i3_14100f_v2.jpg",
+        "fileSize": 87068,
+        "magicType": "image/jpeg",
+        "md5Hash": "b9e1dfd8ea338af8d226c306780d956c"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "CPU-INTEL-14100F",
+        "newUrl": "/images/products/cpu_intel_core_i3_14100f_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/intel-core-i3-14100f-core-i3-14th-gen/p/N82E16819118492",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/19-118-492-01.jpg",
+        "matchingEvidence": "Mặt trước vỏ hộp bán lẻ Intel Core i3-14100F thế hệ 14 với dải đen \"DISCRETE GRAPHICS REQUIRED\", dòng chữ \"14th GEN\" và logo Core i3, khớp part number BX8071514100F."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:52.320Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "MON-AOC-24G4-24-FHD",
+      "productName": "AOC Gaming 24G4 23.8 inch FHD Fast IPS 180Hz",
+      "brand": "AOC",
+      "category": "Monitor",
+      "partNumber": "24G4",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/mon_aoc_24g4_24_fhd_v2.png",
+        "targetProductionPath": "frontend/public/images/products/mon_aoc_24g4_24_fhd_v2.png",
+        "productionUrl": "/images/products/mon_aoc_24g4_24_fhd_v2.png",
+        "fileSize": 575519,
+        "magicType": "image/png",
+        "md5Hash": "157ef3617325e120e59a3d84ffcb4aa6"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "MON-AOC-24G4-24-FHD",
+        "newUrl": "/images/products/mon_aoc_24g4_24_fhd_v2.png"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://aoc.com/us/gaming/products/monitors/24g4",
+        "directImageUrl": "https://cdn.sanity.io/images/hf5b3axp/production/20a4a6e6cd8b1c6989189fe41db3bcf18d8fc511-2000x1500.png",
+        "matchingEvidence": "Ảnh chính hãng từ Sanity CDN của AOC cho model 24G4. Hiển thị trực diện màn hình gaming 24 inch không viền 3 cạnh, chân đế chữ V công thái học với lỗ đi dây viền đỏ đặc trưng của dòng AOC Gaming."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:52.939Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "MON-ASUS-TUF-VG279Q3A-27-FHD",
+      "productName": "ASUS TUF Gaming VG279Q3A 27 inch FHD Fast IPS 180Hz",
+      "brand": "ASUS",
+      "category": "Monitor",
+      "partNumber": "TUF Gaming VG279Q3A",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/mon_asus_tuf_vg279q3a_27_fhd_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/mon_asus_tuf_vg279q3a_27_fhd_v2.jpg",
+        "productionUrl": "/images/products/mon_asus_tuf_vg279q3a_27_fhd_v2.jpg",
+        "fileSize": 448008,
+        "magicType": "image/png",
+        "md5Hash": "44be74d1e8866acbce175daf4456dcef"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "MON-ASUS-TUF-VG279Q3A-27-FHD",
+        "newUrl": "/images/products/mon_asus_tuf_vg279q3a_27_fhd_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/asus-vg279q3a-27-fhd-180-hz-tuf-gaming-fast-ips-black/p/N82E16824281267",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/24-281-267-04.jpg",
+        "matchingEvidence": "Mặt trước màn hình ASUS TUF Gaming VG279Q3A 27 inch hiển thị hình nền đồ họa TUF Gaming, viền siêu mỏng, logo TUF ở cạnh đáy và chân đế cánh chim, khớp MPN VG279Q3A."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:53.234Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "MOU-LOGI-MX-MASTER-3S",
+      "productName": "Logitech MX Master 3S Wireless Graphite",
+      "brand": "Logitech",
+      "category": "Mouse",
+      "partNumber": "910-006556",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/mou_logitech_mx_master_3s_graphite_v2.png",
+        "targetProductionPath": "frontend/public/images/products/mou_logitech_mx_master_3s_graphite_v2.png",
+        "productionUrl": "/images/products/mou_logitech_mx_master_3s_graphite_v2.png",
+        "fileSize": 1413902,
+        "magicType": "image/png",
+        "md5Hash": "3e07814d74600b45ecd558c944d26769"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "MOU-LOGI-MX-MASTER-3S",
+        "newUrl": "/images/products/mou_logitech_mx_master_3s_graphite_v2.png"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.logitech.com/en-us/shop/p/mx-master-3s-mouse.910-006556.html",
+        "directImageUrl": "https://resource.logitech.com/content/dam/logitech/en/products/mice/mx-master-3s/2025-update/mx-master-3s-bluetooth-edition-left-front-view-graphite-new-8.png",
+        "matchingEvidence": "Ảnh PNG độ phân giải siêu nét (1.4MB) từ CDN chính hãng Logitech. Hiển thị góc nghiêng trái trực diện của chuột công thái học MX Master 3S màu đen xám Graphite, con lăn cơ điện MagSpeed kim loại và con lăn ngón cái, khớp MPN 910-006556."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:53.649Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "PSU-CORSAIR-RM750E-750W",
+      "productName": "Corsair RM750e 750W 80 Plus Gold ATX 3.0",
+      "brand": "Corsair",
+      "category": "PSU",
+      "partNumber": "CP-9020262-NA",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/psu_corsair_rm750e_750w_v2.png",
+        "targetProductionPath": "frontend/public/images/products/psu_corsair_rm750e_750w_v2.png",
+        "productionUrl": "/images/products/psu_corsair_rm750e_750w_v2.png",
+        "fileSize": 544960,
+        "magicType": "image/png",
+        "md5Hash": "30e9e061125ab425b593a72c369e5b39"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "PSU-CORSAIR-RM750E-750W",
+        "newUrl": "/images/products/psu_corsair_rm750e_750w_v2.png"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.corsair.com/us/en/p/psu/cp-9020262-na/rme-series-rm750e-fully-modular-low-noise-atx-power-supply-cp-9020262-na",
+        "directImageUrl": "https://res.cloudinary.com/corsair-pwa/image/upload/c_scale,q_auto,w_1200/v1680126577/products/Power-Supply-Units/base-rme-series-2023-psu-config/Gallery/750W/RM750e_01.png",
+        "matchingEvidence": "Ảnh chính hãng từ Cloudinary CDN của Corsair cho RM750e. Hiển thị khối nguồn máy tính ATX chuẩn 3.0 với lưới quạt họa tiết tam giác đặc trưng của Corsair và hệ thống cổng cắm hoàn toàn rời (fully modular), khớp MPN CP-9020262-NA."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:53.998Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "SSD-ADATA-S70BLADE-1TB",
+      "productName": "ADATA XPG GAMMIX S70 BLADE 1TB M.2 PCIe 4.0",
+      "brand": "ADATA",
+      "category": "SSD",
+      "partNumber": "AGAMMIXS70B-1T-CS",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/ssd_adata_s70_blade_1tb_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/ssd_adata_s70_blade_1tb_v2.jpg",
+        "productionUrl": "/images/products/ssd_adata_s70_blade_1tb_v2.jpg",
+        "fileSize": 58763,
+        "magicType": "image/jpeg",
+        "md5Hash": "690d9f540177d6ea332afb707303b5bc"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "SSD-ADATA-S70BLADE-1TB",
+        "newUrl": "/images/products/ssd_adata_s70_blade_1tb_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/xpg-1tb-gammix-s70-blade/p/N82E16820246054",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/20-246-054-S01.jpg",
+        "matchingEvidence": "Ảnh nền trắng chuẩn studio của ổ cứng SSD M.2 2280 ADATA XPG GAMMIX S70 Blade 1TB gắn lá tản nhiệt nhôm xám đen khắc logo XPG và các đường cắt hình học sắc sảo, khớp MPN AGAMMIXS70B-1T-CS / Newegg 20-246-054."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:54.326Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "SSD-CRUCIAL-P3-1TB",
+      "productName": "Crucial P3 1TB M.2 NVMe PCIe 3.0",
+      "brand": "Crucial",
+      "category": "SSD",
+      "partNumber": "CT1000P3SSD8",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/ssd_crucial_p3_1tb_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/ssd_crucial_p3_1tb_v2.jpg",
+        "productionUrl": "/images/products/ssd_crucial_p3_1tb_v2.jpg",
+        "fileSize": 118769,
+        "magicType": "image/jpeg",
+        "md5Hash": "dc7578d7bea06b7e73c7ec87f5942b14"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "SSD-CRUCIAL-P3-1TB",
+        "newUrl": "/images/products/ssd_crucial_p3_1tb_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.newegg.com/crucial-1tb-p3/p/N82E16820156296",
+        "directImageUrl": "https://c1.neweggimages.com/ProductImageCompressAll1280/20-156-295-01.jpg",
+        "matchingEvidence": "Ảnh nền trắng độ nét cao của ổ cứng SSD Crucial P3 M.2 NVMe 2280. Nhãn decal ghi rõ ràng, chính xác từng chữ \"crucial by Micron - P3 PCIe 3.0 M.2 2280\" (khác hoàn toàn biến thể P3 Plus PCIe 4.0), khớp MPN CT1000P3SSD8."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:55.023Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    },
+    {
+      "sku": "SSD-CRUCIAL-T500-1TB",
+      "productName": "Crucial T500 1TB M.2 NVMe PCIe 4.0",
+      "brand": "Crucial",
+      "category": "SSD",
+      "partNumber": "CT1000T500SSD8",
+      "fileRelease": {
+        "sourceStagingPath": "frontend/public/images/products/staging/ssd_crucial_t500_1tb_v2.jpg",
+        "targetProductionPath": "frontend/public/images/products/ssd_crucial_t500_1tb_v2.jpg",
+        "productionUrl": "/images/products/ssd_crucial_t500_1tb_v2.jpg",
+        "fileSize": 62203,
+        "magicType": "image/jpeg",
+        "md5Hash": "10a36d45d4c0a08e40c979c851587ed5"
+      },
+      "databaseUpdate": {
+        "table": "ProductImage",
+        "targetSku": "SSD-CRUCIAL-T500-1TB",
+        "newUrl": "/images/products/ssd_crucial_t500_1tb_v2.jpg"
+      },
+      "sourceProvenance": {
+        "sourcePageUrl": "https://www.bhphotovideo.com/c/product/1790804-REG/crucial_ct1000t500ssd8_1tb_t500_pcie_4_0.html",
+        "directImageUrl": "https://static.bhphoto.com/images/images1000x1000/1790804.jpg",
+        "matchingEvidence": "Ảnh studio 1000x1000 chính thức từ B&H Photo Video (mã hàng chính xác 1790804-REG) cho ổ SSD Crucial T500 Gen4 NVMe M.2 2280. Nhãn decal in rõ \"crucial by Micron - T500 PCIe Gen4 NVMe M.2 SSD\", khớp MPN CT1000T500SSD8."
+      },
+      "userApprovalAudit": {
+        "decision": "APPROVED",
+        "reviewedAt": "2026-10-21T15:23:55.691Z",
+        "reviewerNote": null
+      },
+      "releaseStatus": "RELEASED",
+      "releaseDecisionNote": "USER_APPROVED"
+    }
+  ]
+}
