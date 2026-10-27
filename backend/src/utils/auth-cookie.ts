@@ -3,10 +3,11 @@ import type { Request, Response } from 'express'
 export const AUTH_COOKIE_NAME = 'pc_store_session'
 
 function cookieOptions() {
+  const isProduction = process.env.NODE_ENV === 'production'
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
+    secure: isProduction,
+    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
     path: '/',
   }
 }

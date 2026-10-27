@@ -96,7 +96,8 @@ export default function AiChatbot() {
       })
 
       if (!response.ok) {
-        throw new Error('Dịch vụ AI phản hồi không hợp lệ')
+        const errorData = (await response.json().catch(() => null)) as { message?: string; error?: string } | null
+        throw new Error(errorData?.message || errorData?.error || 'Dịch vụ AI phản hồi không hợp lệ.')
       }
 
       const data = (await response.json()) as AiChatResponse
