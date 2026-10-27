@@ -2,7 +2,7 @@ import NextLink from 'next/link'
 import { useRouter } from 'next/router'
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../lib/auth'
-import { API_BASE_URL, Cart, cartHeaders, productPrice } from '../lib/cart'
+import { API_BASE_URL, Cart, apiFetch, cartHeaders, productPrice } from '../lib/cart'
 
 type Address = {
   id: string
@@ -80,7 +80,7 @@ function apiError(payload: ApiPayload<unknown>, fallback: string) {
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { user, token, authenticated, loading: authLoading } = useAuth()
+  const { user, authenticated, loading: authLoading } = useAuth()
   const [cart, setCart] = useState<Cart | null>(null)
   const [addresses, setAddresses] = useState<Address[]>([])
   const [selectedAddress, setSelectedAddress] = useState('')
@@ -107,13 +107,13 @@ export default function CheckoutPage() {
       setError('')
       try {
         const [cartResponse, addressResponse, configResponse] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/cart/${encodeURIComponent(user.id)}`, {
+          apiFetch(`${API_BASE_URL}/api/cart/${encodeURIComponent(user.id)}`, {
             signal,
-            headers: cartHeaders(token),
+            headers: cartHeaders(),
           }),
-          fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(user.id)}/addresses`, {
+          apiFetch(`${API_BASE_URL}/api/users/${encodeURIComponent(user.id)}/addresses`, {
             signal,
-            headers: cartHeaders(token),
+            headers: cartHeaders(),
           }),
           fetch(`${API_BASE_URL}/api/payments/config`, { signal }).catch(() => null),
         ])
@@ -148,7 +148,7 @@ export default function CheckoutPage() {
         if (!signal.aborted) setLoading(false)
       }
     },
-    [token, user?.id]
+    [user?.id]
   )
 
   useEffect(() => {
@@ -179,9 +179,9 @@ export default function CheckoutPage() {
     }
     setSavingAddress(true)
     try {
-      const response = await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(user.id)}/addresses`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/users/${encodeURIComponent(user.id)}/addresses`, {
         method: 'POST',
-        headers: cartHeaders(token, true),
+        headers: cartHeaders(true),
         body: JSON.stringify(form),
       })
       const payload = (await response.json()) as ApiPayload<Address>
@@ -218,9 +218,9 @@ export default function CheckoutPage() {
     setError('')
     try {
       // 1. Tạo đơn hàng (Giá trị tiền được backend tính toán chuẩn từ database/cart, không tin frontend)
-      const response = await fetch(`${API_BASE_URL}/api/orders`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/orders`, {
         method: 'POST',
-        headers: cartHeaders(token, true),
+        headers: cartHeaders(true),
         body: JSON.stringify({ addressId: selectedAddress }),
       })
       const payload = (await response.json()) as ApiPayload<Record<string, unknown>>
@@ -231,9 +231,9 @@ export default function CheckoutPage() {
 
       // 2. Tạo thanh toán tương ứng
       const orderId = String(createdOrder.id)
-      const payResponse = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(orderId)}/payment`, {
+      const payResponse = await apiFetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(orderId)}/payment`, {
         method: 'POST',
-        headers: cartHeaders(token, true),
+        headers: cartHeaders(true),
         body: JSON.stringify({
           method: paymentMethod,
           bankCode: paymentMethod === 'VNPAY' ? 'VNPAYQR' : undefined,

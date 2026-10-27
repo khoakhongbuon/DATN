@@ -68,6 +68,12 @@ export function AdminLayout({ title, subtitle, children }: { title: string; subt
               </div>
 
               <div className="hidden items-center gap-3 sm:flex">
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-blue-600"
+                >
+                  ← Về Cửa Hàng
+                </Link>
                 <div className="rounded-full bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700">{user?.role || 'ADMIN'}</div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-slate-900">{user?.name || 'Admin'}</p>

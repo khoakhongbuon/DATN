@@ -3,17 +3,63 @@ import * as service from '../services/product.service'
 
 export async function listProducts(req: Request, res: Response, next: NextFunction) {
   try {
-    const { page, limit, search, categoryId, brandId, minPrice, maxPrice, sortBy, sortOrder } = req.query
+    const {
+      page,
+      limit,
+      search,
+      categoryId,
+      category,
+      categorySlug,
+      brandId,
+      brand,
+      brandSlug,
+      minPrice,
+      maxPrice,
+      sortBy,
+      sortOrder,
+      allowAllCategories,
+      includeInactive,
+      specSocket,
+      specRamType,
+      specCapacity,
+      specInterface,
+      specFormFactor,
+      specWattage,
+      specResolution,
+    } = req.query
+
+    const hasBrand = Boolean(brandId || brand || brandSlug)
+    const hasCategory = Boolean(categoryId || category || categorySlug)
+    if (hasBrand && !hasCategory && allowAllCategories !== 'true') {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng chọn danh mục trước khi lọc theo thương hiệu',
+        code: 'CATEGORY_REQUIRED',
+        requiresCategory: true,
+      })
+    }
+
     const opts = {
       page: page ? parseInt(page as string, 10) : undefined,
       limit: limit ? parseInt(limit as string, 10) : undefined,
       search: search as string | undefined,
       categoryId: categoryId as string | undefined,
+      categorySlug: (categorySlug || category) as string | undefined,
       brandId: brandId as string | undefined,
+      brandSlug: (brandSlug || brand) as string | undefined,
       minPrice: minPrice ? parseInt(minPrice as string, 10) : undefined,
       maxPrice: maxPrice ? parseInt(maxPrice as string, 10) : undefined,
       sortBy: sortBy as string | undefined,
       sortOrder: (sortOrder as 'asc' | 'desc') || undefined,
+      requireCategory: allowAllCategories !== 'true',
+      includeInactive: includeInactive === 'true',
+      specSocket: specSocket as string | undefined,
+      specRamType: specRamType as string | undefined,
+      specCapacity: specCapacity as string | undefined,
+      specInterface: specInterface as string | undefined,
+      specFormFactor: specFormFactor as string | undefined,
+      specWattage: specWattage as string | undefined,
+      specResolution: specResolution as string | undefined,
     }
     const result = await service.getProducts(opts)
     return res.json({ success: true, data: result.data, pagination: result.pagination })
@@ -23,7 +69,8 @@ export async function listProducts(req: Request, res: Response, next: NextFuncti
 export async function getProduct(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params
-    const data = await service.getProductById(id)
+    const includeInactive = req.query.includeInactive === 'true'
+    const data = await service.getProductById(id, includeInactive)
     if (!data) return res.status(404).json({ success: false, message: 'Product not found' })
     return res.json({ success: true, data })
   } catch (err) { next(err) }
@@ -32,7 +79,8 @@ export async function getProduct(req: Request, res: Response, next: NextFunction
 export async function getProductBySlug(req: Request, res: Response, next: NextFunction) {
   try {
     const { slug } = req.params
-    const data = await service.getProductBySlug(slug)
+    const includeInactive = req.query.includeInactive === 'true'
+    const data = await service.getProductBySlug(slug, includeInactive)
     if (!data) return res.status(404).json({ success: false, message: 'Product not found' })
     return res.json({ success: true, data })
   } catch (err) { next(err) }

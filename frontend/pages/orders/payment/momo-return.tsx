@@ -2,8 +2,7 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useCallback, useEffect, useState } from 'react'
-import { API_BASE_URL, cartHeaders } from '../../../lib/cart'
-import { useAuth } from '../../../lib/auth'
+import { API_BASE_URL, apiFetch, cartHeaders } from '../../../lib/cart'
 
 type MomoReturnVerification = {
   verified: boolean
@@ -35,7 +34,6 @@ const formatPrice = (value: number) =>
 
 export default function MomoReturnPage() {
   const router = useRouter()
-  const { token } = useAuth()
   const [loading, setLoading] = useState(true)
   const [verification, setVerification] = useState<MomoReturnVerification | null>(null)
   const [payment, setPayment] = useState<PaymentRecord | null>(null)
@@ -64,8 +62,8 @@ export default function MomoReturnPage() {
 
       // 2. Fetch authoritative payment status from backend DB
       if (verData.orderId) {
-        const payRes = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(verData.orderId)}/payment`, {
-          headers: cartHeaders(token),
+        const payRes = await apiFetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(verData.orderId)}/payment`, {
+          headers: cartHeaders(),
         })
         if (payRes.ok) {
           const payJson = await payRes.json() as { data?: PaymentRecord }
@@ -79,7 +77,7 @@ export default function MomoReturnPage() {
     } finally {
       setLoading(false)
     }
-  }, [router.isReady, router.query, token])
+  }, [router.isReady, router.query])
 
   useEffect(() => {
     void verifyAndCheckStatus()
@@ -94,8 +92,8 @@ export default function MomoReturnPage() {
         setPollCount((prev) => prev + 1)
         void (async () => {
           try {
-            const payRes = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(verification.orderId!)}/payment`, {
-              headers: cartHeaders(token),
+            const payRes = await apiFetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(verification.orderId!)}/payment`, {
+              headers: cartHeaders(),
             })
             if (payRes.ok) {
               const payJson = await payRes.json() as { data?: PaymentRecord }
@@ -110,7 +108,7 @@ export default function MomoReturnPage() {
       }, 2500)
       return () => clearTimeout(timer)
     }
-  }, [loading, verification, payment, pollCount, token])
+  }, [loading, verification, payment, pollCount])
 
   const orderId = payment?.orderId || verification?.orderId || ''
   const orderCode = verification?.orderCode || 'Đơn hàng'

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { AdminLayout } from '../../../components/admin/AdminLayout'
 import { useAuth } from '../../../lib/auth'
+import { apiFetch } from '../../../lib/cart'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
 
@@ -41,7 +42,7 @@ const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 export default function AdminBrandsPage() {
   const router = useRouter()
-  const { user, token, loading, authenticated } = useAuth()
+  const { user, loading, authenticated } = useAuth()
   const [brands, setBrands] = useState<Brand[]>([])
   const [loadingList, setLoadingList] = useState(true)
   const [error, setError] = useState('')
@@ -62,9 +63,9 @@ export default function AdminBrandsPage() {
     setLoadingList(true)
     setError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/brands`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/brands`, {
         signal,
-        headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+        headers: { Accept: 'application/json' },
       })
       if (!response.ok) throw new Error('Không thể tải thương hiệu.')
       const payload = await response.json() as { success?: boolean; data?: Brand[]; message?: string }
@@ -84,7 +85,7 @@ export default function AdminBrandsPage() {
     const controller = new AbortController()
     void loadBrands(controller.signal)
     return () => controller.abort()
-  }, [authenticated, refreshNonce, token, user])
+  }, [authenticated, refreshNonce, user])
 
   const resetForm = () => {
     setEditingId(null)
@@ -111,9 +112,9 @@ export default function AdminBrandsPage() {
         description: form.description.trim() || null,
         logo: form.logo.trim() || null,
       }
-      const response = await fetch(`${API_BASE_URL}/api/brands${editingId ? `/${editingId}` : ''}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/brands${editingId ? `/${editingId}` : ''}`, {
         method: editingId ? 'PUT' : 'POST',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify(payloadBody),
       })
       const payload = await response.json() as { success?: boolean; data?: Brand; message?: string; error?: string }
@@ -144,9 +145,9 @@ export default function AdminBrandsPage() {
     setSubmitting(true)
     setError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/brands/${brand.id}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/brands/${brand.id}`, {
         method: 'DELETE',
-        headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+        headers: { Accept: 'application/json' },
       })
       const payload = await response.json() as { success?: boolean; message?: string; error?: string }
       if (!response.ok || !payload.success) {

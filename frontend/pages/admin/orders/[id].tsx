@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { AdminLayout } from '../../../components/admin/AdminLayout'
 import { useAuth } from '../../../lib/auth'
+import { apiFetch } from '../../../lib/cart'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
 
@@ -123,7 +124,7 @@ const apiMessage = (payload: ApiPayload<unknown>, fallback: string) => payload.m
 
 export default function AdminOrderDetailPage() {
   const router = useRouter()
-  const { user, token, loading, authenticated } = useAuth()
+  const { user, loading, authenticated } = useAuth()
   const orderId = typeof router.query.id === 'string' ? router.query.id : ''
   const [order, setOrder] = useState<Order | null>(null)
   const [payment, setPayment] = useState<Payment | null>(null)
@@ -160,12 +161,8 @@ export default function AdminOrderDetailPage() {
       setNotFound(false)
 
       try {
-        const orderResponse = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(orderId)}`, {
+        const orderResponse = await apiFetch(`/api/orders/${encodeURIComponent(orderId)}`, {
           signal: controller.signal,
-          headers: {
-            Accept: 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
         })
 
         const orderPayload = await orderResponse.json() as ApiPayload<Order>
@@ -184,12 +181,8 @@ export default function AdminOrderDetailPage() {
         setOrder(orderPayload.data)
 
         try {
-          const paymentResponse = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(orderPayload.data.id)}/payment`, {
+          const paymentResponse = await apiFetch(`/api/orders/${encodeURIComponent(orderPayload.data.id)}/payment`, {
             signal: controller.signal,
-            headers: {
-              Accept: 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
           })
 
           const paymentPayload = await paymentResponse.json() as ApiPayload<Payment>
@@ -224,7 +217,7 @@ export default function AdminOrderDetailPage() {
 
     void loadData()
     return () => controller.abort()
-  }, [authenticated, router, token, retryKey, user])
+  }, [authenticated, router, retryKey, user, orderId])
 
   const handleCancelOrder = async () => {
     if (!order || !['PENDING', 'CONFIRMED'].includes(order.status)) return
@@ -234,12 +227,8 @@ export default function AdminOrderDetailPage() {
     setError('')
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/cancel`, {
+      const response = await apiFetch(`/api/orders/${encodeURIComponent(order.id)}/cancel`, {
         method: 'PUT',
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
       })
       const payload = await response.json() as ApiPayload<Order>
       if (response.status === 401) {
@@ -265,12 +254,8 @@ export default function AdminOrderDetailPage() {
     setPaymentError('')
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/payment/cancel`, {
+      const response = await apiFetch(`/api/orders/${encodeURIComponent(order.id)}/payment/cancel`, {
         method: 'PUT',
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
       })
       const payload = await response.json() as ApiPayload<Payment>
       if (response.status === 401) {
@@ -293,12 +278,10 @@ export default function AdminOrderDetailPage() {
     setConfirmingPayment(true)
     setPaymentError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/payment/confirm`, {
+      const response = await apiFetch(`/api/orders/${encodeURIComponent(order.id)}/payment/confirm`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Accept: 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           transactionNote: confirmNote.trim() || undefined,

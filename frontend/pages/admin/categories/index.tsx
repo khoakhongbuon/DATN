@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/router'
 import { AdminLayout } from '../../../components/admin/AdminLayout'
 import { useAuth } from '../../../lib/auth'
+import { apiFetch } from '../../../lib/cart'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
 
@@ -46,7 +47,7 @@ const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 export default function AdminCategoriesPage() {
   const router = useRouter()
-  const { user, token, loading, authenticated } = useAuth()
+  const { user, loading, authenticated } = useAuth()
   const [categories, setCategories] = useState<Category[]>([])
   const [loadingList, setLoadingList] = useState(true)
   const [error, setError] = useState('')
@@ -69,9 +70,9 @@ export default function AdminCategoriesPage() {
     setLoadingList(true)
     setError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/categories`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/categories`, {
         signal,
-        headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+        headers: { Accept: 'application/json' },
       })
       if (!response.ok) throw new Error('Không thể tải danh mục.')
       const payload = await response.json() as { success?: boolean; data?: Category[]; message?: string }
@@ -91,7 +92,7 @@ export default function AdminCategoriesPage() {
     const controller = new AbortController()
     void loadCategories(controller.signal)
     return () => controller.abort()
-  }, [authenticated, refreshNonce, token, user])
+  }, [authenticated, refreshNonce, user])
 
   const resetForm = () => {
     setEditingId(null)
@@ -118,9 +119,9 @@ export default function AdminCategoriesPage() {
         image: form.image.trim() || null,
         parentId: form.parentId || null,
       }
-      const response = await fetch(`${API_BASE_URL}/api/categories${editingId ? `/${editingId}` : ''}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/categories${editingId ? `/${editingId}` : ''}`, {
         method: editingId ? 'PUT' : 'POST',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify(payloadBody),
       })
       const payload = await response.json() as { success?: boolean; data?: Category; message?: string; error?: string }
@@ -152,9 +153,9 @@ export default function AdminCategoriesPage() {
     setSubmitting(true)
     setError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/categories/${category.id}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/categories/${category.id}`, {
         method: 'DELETE',
-        headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+        headers: { Accept: 'application/json' },
       })
       const payload = await response.json() as { success?: boolean; message?: string; error?: string }
       if (!response.ok || !payload.success) {

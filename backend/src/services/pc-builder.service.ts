@@ -1,6 +1,22 @@
+import type { ProductSpecification } from '@prisma/client'
 import prisma from '../config/prisma'
 
 export type ComponentType = 'CPU' | 'MAINBOARD' | 'RAM' | 'GPU' | 'STORAGE' | 'PSU' | 'CASE' | 'COOLER'
+
+export type CompatibilitySpecification = Partial<ProductSpecification> & {
+  id: string
+  productId: string
+}
+
+export type CompatibilityCandidate = {
+  id: string
+  name: string
+  price: number
+  salePrice: number | null
+  category?: { id: string; name: string; slug: string } | null
+  brand?: { id: string; name: string; slug: string } | null
+  specifications?: CompatibilitySpecification[]
+}
 
 export type CompatibilityResult = {
   compatible: boolean
@@ -61,18 +77,48 @@ function resolveComponentType(product: any): ComponentType {
     return direct as ComponentType
   }
 
-  const categoryName = normalizeText(product?.category?.name)?.toLowerCase() ?? ''
   const categorySlug = normalizeText(product?.category?.slug)?.toLowerCase() ?? ''
-  const haystack = `${categoryName} ${categorySlug} ${normalizeText(product?.name)?.toLowerCase() ?? ''}`
+  if (categorySlug === 'cpu-cooler' || categorySlug === 'cooler' || categorySlug === 'cooling') return 'COOLER'
+  if (categorySlug === 'cpu' || categorySlug === 'processor') return 'CPU'
+  if (categorySlug === 'mainboard' || categorySlug === 'motherboard') return 'MAINBOARD'
+  if (categorySlug === 'ram' || categorySlug === 'memory') return 'RAM'
+  if (categorySlug === 'gpu' || categorySlug === 'vga' || categorySlug === 'graphics-card') return 'GPU'
+  if (['ssd', 'hdd', 'storage', 'o-cung'].includes(categorySlug)) return 'STORAGE'
+  if (categorySlug === 'psu' || categorySlug === 'power-supply' || categorySlug === 'nguon') return 'PSU'
+  if (categorySlug === 'case' || categorySlug === 'chassis' || categorySlug === 'vo-case') return 'CASE'
 
-  if (haystack.includes('cpu')) return 'CPU'
-  if (haystack.includes('mainboard') || haystack.includes('motherboard')) return 'MAINBOARD'
-  if (haystack.includes('ram') || haystack.includes('memory')) return 'RAM'
-  if (haystack.includes('gpu') || haystack.includes('graphics')) return 'GPU'
-  if (haystack.includes('ssd') || haystack.includes('hdd') || haystack.includes('storage')) return 'STORAGE'
-  if (haystack.includes('psu') || haystack.includes('power supply')) return 'PSU'
-  if (haystack.includes('case')) return 'CASE'
-  if (haystack.includes('cooler') || haystack.includes('heatsink') || haystack.includes('fan')) return 'COOLER'
+  const categoryName = normalizeText(product?.category?.name)?.toLowerCase() ?? ''
+  const productName = normalizeText(product?.name)?.toLowerCase() ?? ''
+  const haystack = `${categoryName} ${categorySlug} ${productName}`
+
+  // Ưu tiên kiểm tra cooler trước cpu để tránh slug hoặc tên chứa 'cpu-cooler' / 'cpu cooler' bị nhận nhầm thành CPU
+  if (
+    haystack.includes('cooler') ||
+    haystack.includes('heatsink') ||
+    haystack.includes('tản nhiệt') ||
+    haystack.includes('tan nhiet') ||
+    haystack.includes('aio') ||
+    haystack.includes('cooling') ||
+    haystack.includes('fan')
+  ) {
+    return 'COOLER'
+  }
+
+  if (
+    haystack.includes('cpu') ||
+    haystack.includes('processor') ||
+    haystack.includes('core i') ||
+    haystack.includes('ryzen')
+  ) {
+    return 'CPU'
+  }
+
+  if (haystack.includes('mainboard') || haystack.includes('motherboard') || haystack.includes('bo mạch')) return 'MAINBOARD'
+  if (haystack.includes('ram') || haystack.includes('memory') || haystack.includes('ddr4') || haystack.includes('ddr5')) return 'RAM'
+  if (haystack.includes('gpu') || haystack.includes('graphics') || haystack.includes('geforce') || haystack.includes('radeon') || haystack.includes('rtx') || haystack.includes('gtx') || haystack.includes('vga')) return 'GPU'
+  if (haystack.includes('ssd') || haystack.includes('hdd') || haystack.includes('storage') || haystack.includes('nvme') || haystack.includes('ổ cứng')) return 'STORAGE'
+  if (haystack.includes('psu') || haystack.includes('power supply') || haystack.includes('nguồn')) return 'PSU'
+  if (haystack.includes('case') || haystack.includes('chassis') || haystack.includes('vỏ')) return 'CASE'
 
   return 'STORAGE'
 }
@@ -82,13 +128,162 @@ function getComponentPrice(product: any): number {
   return Number.isFinite(unitPrice) ? Number(unitPrice) : 0
 }
 
-function parseConnectorTokens(value: string): string[] {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9+\-x]/g, ' ')
-    .split(/\s+/)
-    .filter(Boolean)
-    .filter((token) => token.includes('pin') || token.includes('x') || token.includes('8') || token.includes('6') || token.includes('12v') || token.includes('cable'))
+export type ParsedGpuConnectors = {
+  raw: string
+  isKnown: boolean
+  requires16Pin: boolean
+  count16Pin: number
+  count8Pin: number
+  count6Pin: number
+}
+
+export type ParsedPsuConnectors = {
+  raw: string
+  isKnown: boolean
+  has16Pin: boolean
+  count16Pin: number
+  pcie8PinCount: number
+  pcie6PinCount: number
+  totalPcieCount: number
+}
+
+export function parseGpuPowerConnector(rawText?: string): ParsedGpuConnectors {
+  if (!rawText || !rawText.trim()) {
+    return { raw: '', isKnown: false, requires16Pin: false, count16Pin: 0, count8Pin: 0, count6Pin: 0 }
+  }
+  const text = rawText.toLowerCase().trim()
+  const has16Pin = text.includes('16-pin') || text.includes('16 pin') || text.includes('12vhpwr') || text.includes('12v-2x6')
+
+  let count16Pin = 0
+  if (has16Pin) {
+    const match16 = text.match(/(\d+)\s*x\s*(?:16[\s-]*pin|12vhpwr|12v-2x6)/)
+    count16Pin = match16 ? parseInt(match16[1], 10) : 1
+  }
+
+  let count8Pin = 0
+  const match8 = text.match(/(\d+)\s*x\s*8[\s-]*pin/)
+  if (match8) {
+    count8Pin = parseInt(match8[1], 10)
+  } else if (!has16Pin && text.includes('8-pin')) {
+    count8Pin = 1
+  }
+
+  let count6Pin = 0
+  const match6 = text.match(/(\d+)\s*x\s*6[\s-]*pin/)
+  if (match6) {
+    count6Pin = parseInt(match6[1], 10)
+  } else if (!has16Pin && text.includes('6-pin')) {
+    count6Pin = 1
+  }
+
+  const isKnown = has16Pin || count8Pin > 0 || count6Pin > 0
+  return {
+    raw: rawText,
+    isKnown,
+    requires16Pin: has16Pin,
+    count16Pin,
+    count8Pin,
+    count6Pin,
+  }
+}
+
+export function parsePsuConnectors(rawText?: string): ParsedPsuConnectors {
+  if (!rawText || !rawText.trim()) {
+    return { raw: '', isKnown: false, has16Pin: false, count16Pin: 0, pcie8PinCount: 0, pcie6PinCount: 0, totalPcieCount: 0 }
+  }
+  const text = rawText.toLowerCase().trim()
+  const has16Pin = text.includes('16-pin') || text.includes('16 pin') || text.includes('12vhpwr') || text.includes('12v-2x6')
+  let count16Pin = 0
+  if (has16Pin) {
+    const match16 = text.match(/(\d+)\s*x\s*(?:16[\s-]*pin|12vhpwr|12v-2x6)/)
+    count16Pin = match16 ? parseInt(match16[1], 10) : 1
+  }
+
+  const segments = text.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean)
+  let pcie8PinCount = 0
+  let pcie6PinCount = 0
+  const eightPinMatches: number[] = []
+
+  for (const seg of segments) {
+    if (seg.includes('24-pin') || seg.includes('sata') || seg.includes('molex')) continue
+
+    if (seg.includes('pcie') || seg.includes('pci-e') || seg.includes('vga') || seg.includes('gpu')) {
+      const match8 = seg.match(/(\d+)\s*x\s*(?:8|6\+2)[\s-]*pin/)
+      if (match8) {
+        pcie8PinCount += parseInt(match8[1], 10)
+      } else if (seg.includes('8-pin') || seg.includes('6+2-pin')) {
+        pcie8PinCount += 1
+      }
+      const match6 = seg.match(/(\d+)\s*x\s*6[\s-]*pin/)
+      if (match6) {
+        pcie6PinCount += parseInt(match6[1], 10)
+      }
+      continue
+    }
+
+    if (seg.includes('6+2') || seg.includes('6+2-pin')) {
+      const match = seg.match(/(\d+)\s*x\s*6\+2[\s-]*pin/)
+      pcie8PinCount += match ? parseInt(match[1], 10) : 1
+      continue
+    }
+
+    if (seg.includes('8-pin')) {
+      const match = seg.match(/(\d+)\s*x\s*8[\s-]*pin/)
+      const count = match ? parseInt(match[1], 10) : 1
+      eightPinMatches.push(count)
+    }
+  }
+
+  if (pcie8PinCount === 0 && eightPinMatches.length > 0) {
+    if (eightPinMatches.length === 1) {
+      pcie8PinCount = eightPinMatches[0]
+    } else {
+      for (let i = 1; i < eightPinMatches.length; i++) {
+        pcie8PinCount += eightPinMatches[i]
+      }
+    }
+  }
+
+  const isKnown = has16Pin || pcie8PinCount > 0 || pcie6PinCount > 0
+  return {
+    raw: rawText,
+    isKnown,
+    has16Pin,
+    count16Pin,
+    pcie8PinCount,
+    pcie6PinCount,
+    totalPcieCount: pcie8PinCount + pcie6PinCount,
+  }
+}
+
+export function evaluateGpuPsuConnectors(gpuPowerConnector?: string, psuConnectors?: string): string[] {
+  const warnings: string[] = []
+  const gpu = parseGpuPowerConnector(gpuPowerConnector)
+  const psu = parsePsuConnectors(psuConnectors)
+
+  if (!gpu.isKnown || !psu.isKnown) {
+    warnings.push('GPU/PSU connector compatibility could not be fully verified from the available specification data.')
+    return warnings
+  }
+
+  if (gpu.requires16Pin) {
+    if (!psu.has16Pin) {
+      warnings.push(
+        'GPU requires a 16-pin (12VHPWR) power connector, but PSU does not have a native 16-pin cable; an adapter (e.g. multi 8-pin PCIe to 16-pin) or an ATX 3.0 / PCIe 5.0 PSU is required.',
+      )
+    }
+    return warnings
+  }
+
+  if (gpu.count8Pin > 0) {
+    if (psu.pcie8PinCount < gpu.count8Pin) {
+      warnings.push(
+        `GPU requires ${gpu.count8Pin} x 8-pin PCIe power connector(s), but PSU only provides ${psu.pcie8PinCount} x 8-pin PCIe connector(s).`,
+      )
+    }
+  }
+
+  return warnings
 }
 
 function getSingleSpec(product: any, field: string): unknown {
@@ -115,46 +310,7 @@ function parsePcieVersion(value: string | undefined): number | undefined {
 const SYSTEM_OVERHEAD_WATTS = 120
 const SAFETY_MARGIN_FACTOR = 1.3
 
-export async function checkCompatibility(configuration: { productIds: unknown }): Promise<CompatibilityResult> {
-  const ids = configuration?.productIds
-  if (!Array.isArray(ids)) {
-    serviceError(400, 'productIds must be an array')
-  }
-
-  if (ids.length === 0) {
-    serviceError(400, 'productIds cannot be empty')
-  }
-
-  const uniqueIds = [...new Set(ids)]
-  if (uniqueIds.length !== ids.length) {
-    serviceError(400, 'Duplicate productIds are not allowed')
-  }
-
-  const normalizedIds = ids.filter((id) => typeof id === 'string' && id.trim().length > 0)
-  if (normalizedIds.length !== ids.length) {
-    serviceError(400, 'productIds must contain valid strings')
-  }
-
-  const products = await prisma.product.findMany({
-    where: { id: { in: normalizedIds }, isActive: true },
-    include: {
-      category: true,
-      brand: true,
-      specifications: true,
-    },
-  })
-
-  const productMap = new Map(products.map((product) => [product.id, product]))
-  const missingIds = normalizedIds.filter((id) => !productMap.has(id))
-  if (missingIds.length > 0) {
-    serviceError(404, `Product not found: ${missingIds[0]}`)
-  }
-
-  const selected = normalizedIds.map((productId) => {
-    const product = productMap.get(productId)
-    if (!product) serviceError(404, `Product not found: ${productId}`)
-    return product
-  })
+export function evaluateCompatibility(selected: CompatibilityCandidate[]): CompatibilityResult {
   const components = selected.map((product) => {
     const type = resolveComponentType(product)
     const unitPrice = getComponentPrice(product)
@@ -273,16 +429,8 @@ export async function checkCompatibility(configuration: { productIds: unknown })
   const gpuPowerConnector = normalizeText(getSingleSpec(gpu, 'powerConnector'))
   const psuConnectors = normalizeText(getSingleSpec(psu, 'connectors'))
   if (gpu && psu) {
-    if (gpuPowerConnector && psuConnectors) {
-      const gpuTokens = parseConnectorTokens(gpuPowerConnector)
-      const psuTokens = parseConnectorTokens(psuConnectors)
-      const overlap = gpuTokens.some((token) => psuTokens.includes(token))
-      if (!overlap) {
-        warnings.push('GPU/PSU connector compatibility could not be fully verified from the available specification data.')
-      }
-    } else if (gpuPowerConnector || psuConnectors) {
-      warnings.push('GPU/PSU connector compatibility cannot be fully verified.')
-    }
+    const connectorWarnings = evaluateGpuPsuConnectors(gpuPowerConnector, psuConnectors)
+    warnings.push(...connectorWarnings)
   }
 
   if (mainboard && gpu) {
@@ -323,4 +471,48 @@ export async function checkCompatibility(configuration: { productIds: unknown })
   }
 
   return result
+}
+
+export async function checkCompatibility(configuration: { productIds: unknown }): Promise<CompatibilityResult> {
+  const ids = configuration?.productIds
+  if (!Array.isArray(ids)) {
+    serviceError(400, 'productIds must be an array')
+  }
+
+  if (ids.length === 0) {
+    serviceError(400, 'productIds cannot be empty')
+  }
+
+  const uniqueIds = [...new Set(ids)]
+  if (uniqueIds.length !== ids.length) {
+    serviceError(400, 'Duplicate productIds are not allowed')
+  }
+
+  const normalizedIds = ids.filter((id) => typeof id === 'string' && id.trim().length > 0)
+  if (normalizedIds.length !== ids.length) {
+    serviceError(400, 'productIds must contain valid strings')
+  }
+
+  const products = await prisma.product.findMany({
+    where: { id: { in: normalizedIds }, isActive: true },
+    include: {
+      category: true,
+      brand: true,
+      specifications: true,
+    },
+  })
+
+  const productMap = new Map(products.map((product) => [product.id, product]))
+  const missingIds = normalizedIds.filter((id) => !productMap.has(id))
+  if (missingIds.length > 0) {
+    serviceError(404, `Product not found: ${missingIds[0]}`)
+  }
+
+  const selected = normalizedIds.map((productId) => {
+    const product = productMap.get(productId)
+    if (!product) serviceError(404, `Product not found: ${productId}`)
+    return product
+  })
+
+  return evaluateCompatibility(selected)
 }

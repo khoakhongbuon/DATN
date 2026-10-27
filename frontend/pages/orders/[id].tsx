@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../lib/auth'
-import { API_BASE_URL, cartHeaders } from '../../lib/cart'
+import { API_BASE_URL, apiFetch, cartHeaders } from '../../lib/cart'
 import { ProductImageFallback } from '../../components/ProductImageFallback'
 
 type OrderItem = {
@@ -127,7 +127,7 @@ const apiMessage = (payload: ApiPayload<unknown>, fallback: string) =>
 
 export default function OrderDetailPage() {
   const router = useRouter()
-  const { token, authenticated, loading: authLoading } = useAuth()
+  const { authenticated, loading: authLoading } = useAuth()
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -149,9 +149,9 @@ export default function OrderDetailPage() {
       setLoading(true)
       setError('')
       try {
-        const response = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(router.query.id)}`, {
+        const response = await apiFetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(router.query.id)}`, {
           signal,
-          headers: cartHeaders(token),
+          headers: cartHeaders(),
         })
         const payload = (await response.json()) as ApiPayload<Order>
         if (response.status === 401) {
@@ -166,9 +166,9 @@ export default function OrderDetailPage() {
           setPaymentError('')
           try {
             const [paymentResponse, configResponse] = await Promise.all([
-              fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(payload.data.id)}/payment`, {
+              apiFetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(payload.data.id)}/payment`, {
                 signal,
-                headers: cartHeaders(token),
+                headers: cartHeaders(),
               }),
               fetch(`${API_BASE_URL}/api/payments/config`, { signal }).catch(() => null),
             ])
@@ -205,7 +205,7 @@ export default function OrderDetailPage() {
         }
       }
     },
-    [router, token]
+    [router]
   )
 
   useEffect(() => {
@@ -225,9 +225,9 @@ export default function OrderDetailPage() {
     setCancelling(true)
     setError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/cancel`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/cancel`, {
         method: 'PUT',
-        headers: cartHeaders(token, true),
+        headers: cartHeaders(true),
       })
       const payload = (await response.json()) as ApiPayload<Order>
       if (!response.ok || !payload.data) throw new Error(apiMessage(payload, 'Không thể hủy đơn hàng.'))
@@ -250,9 +250,9 @@ export default function OrderDetailPage() {
       if (paymentMethod === 'BANK_TRANSFER' && paymentConfig && !paymentConfig.bankTransferAvailable) {
         throw new Error('Thông tin tài khoản ngân hàng chưa được cấu hình. Vui lòng chọn COD hoặc liên hệ hỗ trợ.')
       }
-      const response = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/payment`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/payment`, {
         method: 'POST',
-        headers: cartHeaders(token, true),
+        headers: cartHeaders(true),
         body: JSON.stringify({
           method: paymentMethod,
           bankCode: paymentMethod === 'VNPAY' ? 'VNPAYQR' : undefined,
@@ -285,9 +285,9 @@ export default function OrderDetailPage() {
     setPaymentError('')
     try {
       if (targetMethod === 'VNPAY') {
-        const response = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/payment/vnpay-url`, {
+        const response = await apiFetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/payment/vnpay-url`, {
           method: 'POST',
-          headers: cartHeaders(token, true),
+          headers: cartHeaders(true),
           body: JSON.stringify({ bankCode: 'VNPAYQR' }),
         })
         const payload = (await response.json()) as ApiPayload<Payment>
@@ -296,9 +296,9 @@ export default function OrderDetailPage() {
         }
         window.location.href = payload.data.paymentUrl
       } else if (targetMethod === 'MOMO') {
-        const response = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/payment/momo-url`, {
+        const response = await apiFetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/payment/momo-url`, {
           method: 'POST',
-          headers: cartHeaders(token, true),
+          headers: cartHeaders(true),
         })
         const payload = (await response.json()) as ApiPayload<Payment>
         if (!response.ok || !payload.data) {
@@ -325,9 +325,9 @@ export default function OrderDetailPage() {
     setCancellingPayment(true)
     setPaymentError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/payment/cancel`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/payment/cancel`, {
         method: 'PUT',
-        headers: cartHeaders(token, true),
+        headers: cartHeaders(true),
       })
       const payload = (await response.json()) as ApiPayload<Payment>
       if (response.status === 401) {

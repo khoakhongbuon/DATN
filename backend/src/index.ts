@@ -16,12 +16,14 @@ import pcBuilderRoutes from './routes/pc-builder.routes'
 import aiRoutes from './routes/ai.routes'
 import userRoutes from './routes/user.routes'
 import { errorHandler } from './middlewares/error.middleware'
+import { requireSameOriginMutation } from './middlewares/auth.middleware'
 
 dotenv.config()
 
 const app = express()
 
 const isProduction = process.env.NODE_ENV === 'production'
+if (isProduction) app.set('trust proxy', 1)
 
 const configuredOrigins = (process.env.FRONTEND_URL || '')
   .split(',')
@@ -62,6 +64,7 @@ app.use(
   })
 )
 app.use(express.json())
+app.use('/api', requireSameOriginMutation)
 
 app.get('/api/health', (_req, res) => {
   return res.json({ success: true, message: 'Backend is running' })

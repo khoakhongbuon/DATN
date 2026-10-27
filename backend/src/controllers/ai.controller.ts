@@ -5,7 +5,7 @@ const MAX_MESSAGE_LENGTH = 2000
 
 export async function chat(req: Request, res: Response, next: NextFunction) {
   try {
-    const { message } = req.body as { message?: unknown }
+    const { message, history } = req.body as { message?: unknown; history?: unknown }
     if (typeof message !== 'string' || message.trim() === '') {
       return res.status(400).json({ success: false, message: 'message is required' })
     }
@@ -13,11 +13,13 @@ export async function chat(req: Request, res: Response, next: NextFunction) {
       return res.status(400).json({ success: false, message: `message must be ${MAX_MESSAGE_LENGTH} characters or fewer` })
     }
 
-    const result = await service.chat(message.trim())
+    const validatedHistory = service.validateChatHistory(history)
+    const result = await service.chat(message.trim(), undefined, validatedHistory)
     return res.json({
       success: true,
       message: result.message,
       products: result.products,
+      ...(result.build ? { build: result.build } : {}),
     })
   } catch (error) {
     return next(error)

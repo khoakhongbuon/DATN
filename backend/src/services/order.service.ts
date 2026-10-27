@@ -56,7 +56,7 @@ export async function createOrder(userId: string, addressId: unknown) {
       cart.items.map((item) =>
         transaction.product.findUnique({
           where: { id: item.productId },
-          select: { id: true, name: true, price: true, salePrice: true, stock: true },
+          select: { id: true, name: true, price: true, salePrice: true, stock: true, isActive: true },
         }),
       ),
     )
@@ -67,7 +67,7 @@ export async function createOrder(userId: string, addressId: unknown) {
     for (let index = 0; index < cart.items.length; index += 1) {
       const cartItem = cart.items[index]
       const product = products[index]
-      if (!product) orderError(404, 'Product not found')
+      if (!product || !product.isActive) orderError(404, 'Product not found')
       if (!Number.isInteger(cartItem.quantity) || cartItem.quantity <= 0) {
         orderError(400, 'Cart contains an invalid quantity')
       }

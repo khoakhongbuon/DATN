@@ -3,6 +3,9 @@ import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { AdminLayout } from '../../../components/admin/AdminLayout'
 import { useAuth } from '../../../lib/auth'
+import { apiFetch } from '../../../lib/cart'
+
+import { ProductImagePicker, type ProductImageItem } from '../../../components/admin/ProductImagePicker'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
 
@@ -44,8 +47,9 @@ const responseMessage = (payload: unknown, fallback: string) => {
 
 export default function CreateProductPage() {
   const router = useRouter()
-  const { user, token, loading, authenticated } = useAuth()
+  const { user, loading, authenticated } = useAuth()
   const [form, setForm] = useState<ProductForm>(initialForm)
+  const [images, setImages] = useState<ProductImageItem[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [brands, setBrands] = useState<Brand[]>([])
   const [saving, setSaving] = useState(false)
@@ -117,9 +121,9 @@ export default function CreateProductPage() {
 
     setSaving(true)
     try {
-      const response = await fetch(`${API_BASE_URL}/api/products`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/products`, {
         method: 'POST',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: form.name.trim(),
           slug: form.slug.trim(),
@@ -132,10 +136,32 @@ export default function CreateProductPage() {
           brandId: form.brandId || undefined,
         }),
       })
-      const payload = await response.json() as { success?: boolean; data?: unknown; message?: string; error?: string }
+      const payload = await response.json() as { success?: boolean; data?: { id?: string }; message?: string; error?: string }
       if (!response.ok || !payload.success) {
         throw new Error(responseMessage(payload, 'Không thể tạo sản phẩm.'))
       }
+
+      // If images were selected, upload/save them for the newly created product
+      const newProductId = payload.data?.id
+      if (newProductId && images.length > 0) {
+        for (let idx = 0; idx < images.length; idx++) {
+          const img = images[idx]
+          try {
+            await apiFetch(`${API_BASE_URL}/api/products/${newProductId}/images`, {
+              method: 'POST',
+              headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                url: img.url,
+                alt: img.alt?.trim() || form.name.trim(),
+                sortOrder: idx,
+              }),
+            })
+          } catch {
+            // Non-blocking for subsequent images
+          }
+        }
+      }
+
       router.push('/admin/products')
     } catch (error) {
       setSubmitError((error as Error).message || 'Không thể tạo sản phẩm.')
@@ -230,6 +256,9 @@ export default function CreateProductPage() {
             <span>Mô tả</span>
             <textarea value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} rows={5} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 outline-none focus:border-blue-500" />
           </label>
+
+          {/* Visual Product Image Picker */}
+          <ProductImagePicker images={images} onChange={setImages} disabled={saving} />
 
           <div className="flex flex-wrap gap-3">
             <button type="submit" disabled={saving} className="rounded-xl bg-blue-700 px-5 py-3 text-sm font-black text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300">

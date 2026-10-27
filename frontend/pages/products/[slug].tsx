@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useEffect, useMemo, useState } from 'react'
-import { API_BASE_URL as CART_API_BASE_URL, cartHeaders } from '../../lib/cart'
+import { API_BASE_URL as CART_API_BASE_URL, apiFetch, cartHeaders } from '../../lib/cart'
 import { useAuth } from '../../lib/auth'
 import { ProductImageFallback } from '../../components/ProductImageFallback'
 
@@ -142,7 +142,7 @@ export default function ProductDetailPage() {
   const [retry, setRetry] = useState(0)
   const [cartMessage, setCartMessage] = useState('')
   const [cartSubmitting, setCartSubmitting] = useState(false)
-  const { user, token, authenticated } = useAuth()
+  const { user, authenticated } = useAuth()
 
   useEffect(() => {
     if (!router.isReady || !slug) return
@@ -241,9 +241,9 @@ export default function ProductDetailPage() {
     }
     setCartSubmitting(true)
     try {
-      const response = await fetch(`${CART_API_BASE_URL}/api/cart/${encodeURIComponent(user.id)}/items`, {
+      const response = await apiFetch(`${CART_API_BASE_URL}/api/cart/${encodeURIComponent(user.id)}/items`, {
         method: 'POST',
-        headers: cartHeaders(token, true),
+        headers: cartHeaders(true),
         body: JSON.stringify({ productId: product.id, quantity }),
       })
       if (!response.ok) throw new Error('Không thể thêm sản phẩm vào giỏ hàng.')

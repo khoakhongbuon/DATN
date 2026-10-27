@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { AdminLayout } from '../../components/admin/AdminLayout'
 import { useAuth } from '../../lib/auth'
+import { apiFetch } from '../../lib/cart'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
 
@@ -15,7 +16,7 @@ type StatCard = {
 
 export default function AdminDashboardPage() {
   const router = useRouter()
-  const { user, token, loading, authenticated } = useAuth()
+  const { user, loading, authenticated } = useAuth()
   const [stats, setStats] = useState<StatCard[]>([])
   const [statsLoading, setStatsLoading] = useState(true)
   const [statsError, setStatsError] = useState('')
@@ -42,9 +43,9 @@ export default function AdminDashboardPage() {
           fetch(`${API_BASE_URL}/api/products?limit=1`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
           fetch(`${API_BASE_URL}/api/categories`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
           fetch(`${API_BASE_URL}/api/brands`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
-          fetch(`${API_BASE_URL}/api/orders`, {
+          apiFetch(`${API_BASE_URL}/api/orders`, {
             signal: controller.signal,
-            headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+            headers: { Accept: 'application/json' },
           }),
         ])
 
@@ -102,7 +103,7 @@ export default function AdminDashboardPage() {
       active = false
       controller.abort()
     }
-  }, [authenticated, token, user, loading])
+  }, [authenticated, user, loading])
 
   if (loading) {
     return (

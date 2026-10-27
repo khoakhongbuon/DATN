@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express'
 import * as authService from '../services/auth.service'
-import prisma from '../config/prisma'
+import { readAuthCookie } from '../utils/auth-cookie'
+
+type SessionAuthenticator = (secret: string) => Promise<{ userId: string; role: string }>
+type AllowedOrigins = () => Set<string>
 
 declare global {
   namespace Express {
@@ -11,38 +14,56 @@ declare global {
   }
 }
 
-export async function authenticate(req: Request, _res: Response, next: NextFunction) {
-  try {
-    const header = req.header('authorization')
-    if (!header || !header.startsWith('Bearer ')) {
-      throw { status: 401, message: 'Authentication required' }
+function configuredOrigins() {
+  const origins = (process.env.FRONTEND_URL || '')
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
+    .filter(Boolean)
+  if (process.env.NODE_ENV !== 'production') {
+    origins.push('http://localhost:3000', 'http://127.0.0.1:3000')
+  }
+  return new Set(origins)
+}
+
+export function createSameOriginMutationMiddleware(
+  getAllowedOrigins: AllowedOrigins = configuredOrigins,
+) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method) || !readAuthCookie(req)) {
+      return next()
     }
 
-    const token = header.slice(7).trim()
-    if (!token) throw { status: 401, message: 'Authentication required' }
+    const origin = req.get('origin')
+    if (!origin) return next()
 
-    const userId = authService.verifyToken(token)
-    req.userId = userId
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    })
-    if (!user) {
-      throw { status: 401, message: 'User no longer exists' }
+    const normalizedOrigin = origin.trim().replace(/\/+$/, '')
+    if (!getAllowedOrigins().has(normalizedOrigin)) {
+      return next({ status: 403, message: 'Request origin is not allowed' })
     }
-    req.userRole = user.role
-    next()
-  } catch (err) {
-    if (err instanceof Error && err.name === 'TokenExpiredError') {
-      return next({ status: 401, message: 'Token expired' })
-    }
-    if (err instanceof Error && err.name === 'JsonWebTokenError') {
-      return next({ status: 401, message: 'Invalid token' })
-    }
-    return next(err)
+    return next()
   }
 }
+
+export function createAuthenticateMiddleware(
+  authenticateSession: SessionAuthenticator = authService.authenticateSession,
+) {
+  return async (req: Request, _res: Response, next: NextFunction) => {
+    const secret = readAuthCookie(req)
+    if (!secret) return next({ status: 401, message: 'Authentication required' })
+
+    try {
+      const session = await authenticateSession(secret)
+      req.userId = session.userId
+      req.userRole = session.role
+      return next()
+    } catch (err) {
+      return next(err)
+    }
+  }
+}
+
+export const authenticate = createAuthenticateMiddleware()
+export const requireSameOriginMutation = createSameOriginMutationMiddleware()
 
 export function requireAdmin(req: Request, _res: Response, next: NextFunction) {
   if (!req.userId) {

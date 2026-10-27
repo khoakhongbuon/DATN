@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { useEffect, useMemo, useState } from 'react'
 import { AdminLayout } from '../../../components/admin/AdminLayout'
 import { useAuth } from '../../../lib/auth'
+import { apiFetch } from '../../../lib/cart'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
 
@@ -51,7 +52,7 @@ const formatDate = (value: string) => {
 
 export default function AdminOrdersPage() {
   const router = useRouter()
-  const { user, token, loading, authenticated } = useAuth()
+  const { user, loading, authenticated } = useAuth()
   const [orders, setOrders] = useState<OrderRecord[]>([])
   const [loadingOrders, setLoadingOrders] = useState(true)
   const [error, setError] = useState('')
@@ -72,11 +73,10 @@ export default function AdminOrdersPage() {
       setLoadingOrders(true)
       setError('')
       try {
-        const response = await fetch(`${API_BASE_URL}/api/orders`, {
+        const response = await apiFetch(`${API_BASE_URL}/api/orders`, {
           signal: controller.signal,
           headers: {
             Accept: 'application/json',
-            Authorization: `Bearer ${token}`,
           },
         })
         const payload = await response.json() as { success?: boolean; data?: OrderRecord[]; message?: string; error?: string }
@@ -96,7 +96,7 @@ export default function AdminOrdersPage() {
 
     void loadOrders()
     return () => controller.abort()
-  }, [authenticated, refreshKey, token, user])
+  }, [authenticated, refreshKey, user])
 
   const totalOrders = useMemo(() => orders.length, [orders])
 

@@ -37,18 +37,20 @@ type ProductCardProps = {
 }
 
 const categories = [
-  { label: 'CPU', detail: 'Hiệu năng mạnh mẽ', icon: <CpuIcon />, href: '/products?search=CPU' },
-  { label: 'VGA / GPU', detail: 'Đồ họa gaming', icon: <GpuIcon />, href: '/products?search=VGA' },
-  { label: 'Mainboard', detail: 'Nền tảng ổn định', icon: <CircuitIcon />, href: '/products?search=Mainboard' },
-  { label: 'RAM', detail: 'Tốc độ vượt trội', icon: <MemoryIcon />, href: '/products?search=RAM' },
-  { label: 'SSD', detail: 'Tăng tốc hệ thống', icon: <HardDriveIcon />, href: '/products?search=SSD' },
-  { label: 'HDD', detail: 'Lưu trữ bền bỉ', icon: <HardDriveIcon />, href: '/products?search=HDD' },
-  { label: 'Nguồn / PSU', detail: 'Cấp nguồn ổn định', icon: <PowerIcon />, href: '/products?search=PSU' },
-  { label: 'Case', detail: 'Không gian build tối ưu', icon: <CaseIcon />, href: '/products?search=Case' },
-  { label: 'Tản nhiệt', detail: 'Mát và bền bỉ', icon: <FanIcon />, href: '/products?search=Tản nhiệt' },
-  { label: 'Màn hình', detail: 'Hình ảnh sắc nét', icon: <MonitorIcon />, href: '/products?search=Màn hình' },
-  { label: 'Bàn phím', detail: 'Điều khiển chính xác', icon: <KeyboardIcon />, href: '/products?search=Bàn phím' },
-  { label: 'Chuột', detail: 'Phản hồi nhanh', icon: <MouseIcon />, href: '/products?search=Chuột' },
+  { label: 'CPU', detail: 'Hiệu năng mạnh mẽ', icon: <CpuIcon />, href: '/products?category=cpu' },
+  { label: 'Card đồ họa (VGA/GPU)', detail: 'Đồ họa gaming', icon: <GpuIcon />, href: '/products?category=gpu' },
+  { label: 'Mainboard', detail: 'Nền tảng ổn định', icon: <CircuitIcon />, href: '/products?category=mainboard' },
+  { label: 'RAM', detail: 'Tốc độ vượt trội', icon: <MemoryIcon />, href: '/products?category=ram' },
+  { label: 'SSD', detail: 'Tăng tốc hệ thống', icon: <HardDriveIcon />, href: '/products?category=ssd' },
+  { label: 'HDD', detail: 'Lưu trữ bền bỉ', icon: <HardDriveIcon />, href: '/products?category=hdd' },
+  { label: 'Nguồn máy tính (PSU)', detail: 'Cấp nguồn ổn định', icon: <PowerIcon />, href: '/products?category=psu' },
+  { label: 'Vỏ case', detail: 'Không gian build tối ưu', icon: <CaseIcon />, href: '/products?category=case' },
+  { label: 'Tản nhiệt CPU', detail: 'Mát và bền bỉ', icon: <FanIcon />, href: '/products?category=cpu-cooler' },
+  { label: 'Card Wi-Fi', detail: 'Kết nối ổn định', icon: <NetworkIcon />, href: '/products?category=wifi-card' },
+  { label: 'Màn hình', detail: 'Hình ảnh sắc nét', icon: <MonitorIcon />, href: '/products?category=monitor' },
+  { label: 'Bàn phím', detail: 'Điều khiển chính xác', icon: <KeyboardIcon />, href: '/products?category=keyboard' },
+  { label: 'Chuột', detail: 'Phản hồi nhanh', icon: <MouseIcon />, href: '/products?category=mouse' },
+  { label: 'Tai nghe', detail: 'Âm thanh sống động', icon: <HeadsetIcon />, href: '/products?category=headset' },
 ]
 
 const componentTabs = ['CPU', 'VGA', 'Mainboard', 'RAM', 'SSD', 'PSU', 'Case', 'Tản nhiệt']
@@ -160,11 +162,11 @@ export default function Home() {
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            <Link href="/products?search=PC%20Gaming" className="group rounded-[24px] border border-blue-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-lg">
+            <Link href="/pc-builder" className="group rounded-[24px] border border-blue-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-lg">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">PC Gaming</p>
               <h2 className="mt-3 text-2xl font-black text-slate-900">Sẵn sàng chiến game</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">Khám phá linh kiện và cấu hình theo nhu cầu.</p>
-              <span className="mt-5 inline-flex text-sm font-bold text-blue-700 group-hover:text-blue-500">Khám phá ngay →</span>
+              <p className="mt-2 text-sm leading-6 text-slate-500">Tự cấu hình PC Gaming với linh kiện chuẩn tương thích.</p>
+              <span className="mt-5 inline-flex text-sm font-bold text-blue-700 group-hover:text-blue-500">Xây dựng cấu hình ngay →</span>
             </Link>
             <Link href="/products?search=Màn%20hình" className="group rounded-[24px] bg-slate-900 p-6 text-white shadow-sm transition hover:-translate-y-1 hover:bg-slate-800">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">Màn hình & Gear</p>
@@ -216,7 +218,7 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-[1600px] px-4 pb-10 sm:px-6 lg:px-8">
-        <div className="rounded-[24px] bg-white p-5 shadow-sm sm:p-7"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">Đối tác công nghệ</p><h2 className="mt-2 text-2xl font-black sm:text-3xl">Thương hiệu nổi bật</h2></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">{brands.map((brand) => <Link key={brand} href={`/products?search=${encodeURIComponent(brand)}`} className="flex min-h-20 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-3 text-center text-lg font-black text-slate-700 transition hover:-translate-y-1 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700">{brand}</Link>)}</div></div>
+        <div className="rounded-[24px] bg-white p-5 shadow-sm sm:p-7"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">Đối tác công nghệ</p><h2 className="mt-2 text-2xl font-black sm:text-3xl">Thương hiệu nổi bật</h2></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">{brands.map((brand) => <Link key={brand} href={`/products?brand=${encodeURIComponent(brand.toLowerCase())}`} className="flex min-h-20 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-3 text-center text-lg font-black text-slate-700 transition hover:-translate-y-1 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700">{brand}</Link>)}</div></div>
       </section>
 
       <section className="mx-auto max-w-[1600px] px-4 pb-14 sm:px-6 lg:px-8"><div className="mb-5 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">Tin tức công nghệ</p><h2 className="mt-2 text-2xl font-black sm:text-3xl">Kiến thức giúp bạn chọn tốt hơn</h2></div><Link href="/products" className="text-sm font-bold text-blue-700 hover:text-blue-500">Xem tất cả →</Link></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{news.map((item) => <article key={item.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"><div className="flex h-32 items-end rounded-xl bg-gradient-to-br from-blue-100 via-sky-50 to-slate-100 p-4 text-xs font-black uppercase tracking-[0.16em] text-blue-700">{item.tag}</div><h3 className="mt-5 text-lg font-black text-slate-900">{item.title}</h3><p className="mt-2 text-sm leading-6 text-slate-500">{item.detail}</p><Link href="/products" className="mt-4 inline-flex text-sm font-bold text-blue-700 hover:text-blue-500">Xem thêm →</Link></article>)}</div></section>
@@ -253,3 +255,5 @@ function CaseIcon() { return <Icon><rect x="6" y="3" width="12" height="18" rx="
 function MonitorIcon() { return <Icon><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" /></Icon> }
 function KeyboardIcon() { return <Icon><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M6 10h.01M9 10h.01M12 10h.01M15 10h.01M18 10h.01M6 14h8M16 14h2" /></Icon> }
 function MouseIcon() { return <Icon><rect x="7" y="3" width="10" height="18" rx="5" /><path d="M12 3v5M9 8h6" /></Icon> }
+function NetworkIcon() { return <Icon><rect x="5" y="2" width="14" height="20" rx="2" /><path d="M12 18h.01M8 6h8M8 10h8M8 14h8" /></Icon> }
+function HeadsetIcon() { return <Icon><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" /></Icon> }

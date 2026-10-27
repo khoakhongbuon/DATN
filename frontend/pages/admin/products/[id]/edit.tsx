@@ -3,6 +3,9 @@ import { useRouter } from 'next/router'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { AdminLayout } from '../../../../components/admin/AdminLayout'
 import { useAuth } from '../../../../lib/auth'
+import { apiFetch } from '../../../../lib/cart'
+
+import { ProductImagePicker, type ProductImageItem } from '../../../../components/admin/ProductImagePicker'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
 
@@ -23,7 +26,7 @@ type Product = {
   brand?: Brand | null
 }
 
-type ImageRecord = { id: string; url: string; alt?: string | null; sortOrder?: number | null }
+type ImageRecord = ProductImageItem
 type SpecificationRecord = {
   id: string
   productId: string
@@ -113,7 +116,7 @@ const normalizeProductType = (value?: string | null) => {
 export default function EditProductPage() {
   const router = useRouter()
   const { productId } = router.query
-  const { user, token, loading, authenticated } = useAuth()
+  const { user, loading, authenticated } = useAuth()
 
   const [product, setProduct] = useState<Product | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
@@ -132,8 +135,6 @@ export default function EditProductPage() {
     brandId: '',
   })
   const [specForm, setSpecForm] = useState<Record<string, string>>({})
-  const [imageUrl, setImageUrl] = useState('')
-  const [imageAlt, setImageAlt] = useState('')
   const [saving, setSaving] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [loadError, setLoadError] = useState('')
@@ -275,9 +276,9 @@ export default function EditProductPage() {
     setSaving(true)
     setSubmitError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/products/${productId}`, {
         method: 'PUT',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: form.name.trim(),
           slug: form.slug.trim(),
@@ -305,30 +306,45 @@ export default function EditProductPage() {
     }
   }
 
-  const handleAddImage = async () => {
-    if (!productId || typeof productId !== 'string' || !imageUrl.trim()) return
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/products/${productId}/images`, {
-        method: 'POST',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ url: imageUrl.trim(), alt: imageAlt.trim() || null, sortOrder: images.length }),
-      })
-      const payload = await response.json() as { success?: boolean; data?: ImageRecord; message?: string }
-      if (!response.ok || !payload.success) throw new Error(payload.message || 'Không thể thêm ảnh.')
-      setImages((current) => [...current, payload.data as ImageRecord])
-      setImageUrl('')
-      setImageAlt('')
-    } catch (error) {
-      setSubmitError((error as Error).message || 'Không thể thêm ảnh.')
+  const handleImagePickerChange = async (nextImages: ProductImageItem[]) => {
+    // Check if any new images were picked or added from URL
+    const newItems = nextImages.filter((img) => img.isNew && !img.id)
+    if (newItems.length > 0 && productId && typeof productId === 'string') {
+      try {
+        const addedImages: ProductImageItem[] = []
+        for (const item of newItems) {
+          const response = await apiFetch(`${API_BASE_URL}/api/products/${productId}/images`, {
+            method: 'POST',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: item.url,
+              alt: item.alt?.trim() || form.name.trim(),
+              sortOrder: item.sortOrder ?? images.length,
+            }),
+          })
+          const payload = (await response.json()) as { success?: boolean; data?: ProductImageItem; message?: string }
+          if (response.ok && payload.success && payload.data) {
+            addedImages.push(payload.data)
+          } else {
+            throw new Error(payload.message || 'Không thể lưu ảnh mới.')
+          }
+        }
+        const remainingExisting = nextImages.filter((img) => img.id)
+        setImages([...remainingExisting, ...addedImages])
+        return
+      } catch (err) {
+        setSubmitError((err as Error).message || 'Không thể lưu ảnh mới.')
+      }
     }
+    setImages(nextImages)
   }
 
-  const handleUpdateImage = async (image: ImageRecord) => {
-    if (!productId || typeof productId !== 'string') return
+  const handleUpdateImage = async (image: ProductImageItem) => {
+    if (!productId || typeof productId !== 'string' || !image.id) return
     try {
-      const response = await fetch(`${API_BASE_URL}/api/products/${productId}/images/${image.id}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/products/${productId}/images/${image.id}`, {
         method: 'PUT',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: image.url.trim(), alt: image.alt?.trim() || null, sortOrder: image.sortOrder ?? 0 }),
       })
       const payload = await response.json() as { success?: boolean; message?: string }
@@ -341,15 +357,16 @@ export default function EditProductPage() {
   const handleDeleteImage = async (imageId: string) => {
     if (!productId || typeof productId !== 'string') return
     try {
-      const response = await fetch(`${API_BASE_URL}/api/products/${productId}/images/${imageId}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/products/${productId}/images/${imageId}`, {
         method: 'DELETE',
-        headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+        headers: { Accept: 'application/json' },
       })
       const payload = await response.json() as { success?: boolean; message?: string }
       if (!response.ok || !payload.success) throw new Error(payload.message || 'Không thể xóa ảnh.')
       setImages((current) => current.filter((image) => image.id !== imageId))
     } catch (error) {
       setSubmitError((error as Error).message || 'Không thể xóa ảnh.')
+      throw error
     }
   }
 
@@ -367,9 +384,9 @@ export default function EditProductPage() {
 
     try {
       if (!specs.length) {
-        const response = await fetch(`${API_BASE_URL}/api/products/${productId}/specifications`, {
+        const response = await apiFetch(`${API_BASE_URL}/api/products/${productId}/specifications`, {
           method: 'POST',
-          headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
           body: JSON.stringify({ productType: productTypeKey, ...payload }),
         })
         const result = await response.json() as { success?: boolean; data?: SpecificationRecord; message?: string }
@@ -382,9 +399,9 @@ export default function EditProductPage() {
       const existing = specs[0]
       if (!existing?.id) throw new Error('Không tìm thấy thông số cần cập nhật.')
 
-      const response = await fetch(`${API_BASE_URL}/api/products/${productId}/specifications/${existing.id}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/products/${productId}/specifications/${existing.id}`, {
         method: 'PUT',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify({ productType: productTypeKey, ...payload }),
       })
       const result = await response.json() as { success?: boolean; data?: SpecificationRecord; message?: string }
@@ -506,35 +523,14 @@ export default function EditProductPage() {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.1fr_1fr]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-xl font-black">Hình ảnh sản phẩm</h3>
-            <div className="mt-4 flex flex-col gap-3 md:flex-row">
-              <input value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="https://..." className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500" />
-              <input value={imageAlt} onChange={(event) => setImageAlt(event.target.value)} placeholder="Alt text" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 md:w-40" />
-              <button type="button" onClick={() => void handleAddImage()} className="rounded-xl bg-slate-900 px-3 py-2.5 text-sm font-bold text-white hover:bg-slate-800">
-                Thêm
-              </button>
-            </div>
-
-            {images.length === 0 ? (
-              <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">Chưa có ảnh sản phẩm.</div>
-            ) : (
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                {images.map((image) => (
-                  <div key={image.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                    <img src={image.url} alt={image.alt || product.name} className="h-40 w-full object-cover" />
-                    <div className="space-y-2 p-3">
-                      <input value={image.url} onChange={(event) => setImages((current) => current.map((item) => item.id === image.id ? { ...item, url: event.target.value } : item))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-blue-500" />
-                      <input value={image.alt ?? ''} onChange={(event) => setImages((current) => current.map((item) => item.id === image.id ? { ...item, alt: event.target.value } : item))} placeholder="Alt text" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-blue-500" />
-                      <div className="flex gap-2">
-                        <button type="button" onClick={() => void handleUpdateImage(image)} className="flex-1 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100">Lưu</button>
-                        <button type="button" onClick={() => void handleDeleteImage(image.id)} className="flex-1 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-100">Xóa</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          {/* Visual Product Image Picker */}
+          <div>
+            <ProductImagePicker
+              images={images}
+              onChange={handleImagePickerChange}
+              onDeleteExisting={handleDeleteImage}
+              onSaveExisting={handleUpdateImage}
+            />
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

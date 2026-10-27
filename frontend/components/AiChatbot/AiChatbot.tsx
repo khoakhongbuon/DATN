@@ -19,6 +19,21 @@ const QUICK_SUGGESTIONS = [
   'Tư vấn RAM DDR4',
 ]
 
+function getChatHistory(messages: ChatMessageItem[]) {
+  let totalLength = 0
+  return messages
+    .filter((message) => message.id !== INITIAL_MESSAGE.id && !message.isError)
+    .slice(-8)
+    .reverse()
+    .filter((message) => {
+      if (message.content.length > 2000 || totalLength + message.content.length > 6000) return false
+      totalLength += message.content.length
+      return true
+    })
+    .reverse()
+    .map(({ role, content }) => ({ role, content }))
+}
+
 export default function AiChatbot() {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessageItem[]>([INITIAL_MESSAGE])
@@ -77,7 +92,7 @@ export default function AiChatbot() {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, history: getChatHistory(messages) }),
       })
 
       if (!response.ok) {
@@ -95,6 +110,7 @@ export default function AiChatbot() {
         role: 'assistant',
         content: data.message,
         products: Array.isArray(data.products) ? data.products : [],
+        build: data.build,
         createdAt: Date.now(),
       }
 
@@ -323,4 +339,3 @@ export default function AiChatbot() {
     </aside>
   )
 }
-

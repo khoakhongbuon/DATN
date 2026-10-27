@@ -12,39 +12,362 @@ type ProductCreateInput = {
   brandId?: string | null
 }
 
+export function removeVietnameseTones(str: string): string {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+}
+
+export function normalizeSearchKeyword(str: string): string {
+  return removeVietnameseTones(str.trim().toLowerCase()).replace(/\s+/g, ' ')
+}
+
+export interface CategoryAliasRule {
+  categorySlug: string
+  patterns: string[]
+}
+
+export const CATEGORY_ALIAS_RULES: CategoryAliasRule[] = [
+  // GPU must be checked before monitor because 'card man hinh' contains 'man hinh'
+  {
+    categorySlug: 'gpu',
+    patterns: ['card man hinh', 'card do hoa', 'card do hoa roi', 'card roi', 'vga', 'gpu'],
+  },
+  {
+    categorySlug: 'monitor',
+    patterns: ['man hinh may tinh', 'man hinh', 'manhinh', 'monitor', 'monitors'],
+  },
+  {
+    categorySlug: 'cpu',
+    patterns: ['bo vi xu ly', 'vi xu ly', 'chip cpu', 'chip', 'cpu'],
+  },
+  {
+    categorySlug: 'mainboard',
+    patterns: ['bo mach chu', 'bo mach', 'mainboard', 'main may tinh'],
+  },
+  {
+    categorySlug: 'cpu-cooler',
+    patterns: ['tan nhiet cpu', 'tan nhiet nuoc', 'tan nhiet khi', 'tan nhiet', 'quat cpu', 'cpu cooler', 'cooler'],
+  },
+  {
+    categorySlug: 'psu',
+    patterns: ['nguon may tinh', 'nguon pc', 'nguon', 'psu', 'power supply'],
+  },
+  {
+    categorySlug: 'case',
+    patterns: ['vo case', 'vo may tinh', 'thung may tinh', 'thung may', 'case pc', 'case'],
+  },
+  {
+    categorySlug: 'ram',
+    patterns: ['bo nho trong', 'ram pc', 'ram'],
+  },
+  {
+    categorySlug: 'ssd',
+    patterns: ['o cung ssd', 'o ssd', 'ssd'],
+  },
+  {
+    categorySlug: 'hdd',
+    patterns: ['o cung hdd', 'o hdd', 'hdd'],
+  },
+  {
+    categorySlug: 'keyboard',
+    patterns: ['ban phim co', 'ban phim may tinh', 'ban phim', 'phim co', 'keyboard'],
+  },
+  {
+    categorySlug: 'mouse',
+    patterns: ['chuot may tinh', 'chuot gaming', 'chuot khong day', 'chuot', 'mouse'],
+  },
+  {
+    categorySlug: 'headset',
+    patterns: ['tai nghe gaming', 'tai nghe chup tai', 'tai nghe', 'headset', 'headphone'],
+  },
+  {
+    categorySlug: 'mousepad',
+    patterns: ['lot chuot', 'ban di chuot', 'mousepad'],
+  },
+  {
+    categorySlug: 'webcam',
+    patterns: ['webcam'],
+  },
+  {
+    categorySlug: 'controller',
+    patterns: ['tay cam choi game', 'tay cam', 'gamepad', 'controller'],
+  },
+  {
+    categorySlug: 'wifi-card',
+    patterns: ['card mang wifi', 'card mang', 'card wifi', 'wifi card'],
+  },
+  {
+    categorySlug: 'printer',
+    patterns: ['may in', 'printer'],
+  },
+]
+
+export function buildSearchCondition(searchQuery: string): any {
+  const q = searchQuery.trim()
+  if (!q) return null
+
+  const normalizedQ = normalizeSearchKeyword(q)
+
+  let matchedRule: CategoryAliasRule | null = null
+  let matchedPattern = ''
+  let remainingWords = ''
+
+  for (const rule of CATEGORY_ALIAS_RULES) {
+    for (const pattern of rule.patterns) {
+      if (normalizedQ === pattern) {
+        matchedRule = rule
+        matchedPattern = pattern
+        remainingWords = ''
+        break
+      } else if (normalizedQ.startsWith(pattern + ' ')) {
+        if (pattern.length > matchedPattern.length) {
+          matchedRule = rule
+          matchedPattern = pattern
+          remainingWords = normalizedQ.substring(pattern.length).trim()
+        }
+      } else if (normalizedQ.endsWith(' ' + pattern)) {
+        if (pattern.length > matchedPattern.length) {
+          matchedRule = rule
+          matchedPattern = pattern
+          remainingWords = normalizedQ.substring(0, normalizedQ.length - pattern.length).trim()
+        }
+      }
+    }
+    if (matchedRule && remainingWords === '') {
+      break
+    }
+  }
+
+  if (matchedRule) {
+    if (!remainingWords) {
+      // Exact category alias query (e.g. 'Màn hình', 'man hinh', 'Monitor', 'VGA')
+      return {
+        OR: [
+          { category: { slug: matchedRule.categorySlug } },
+          { category: { name: { contains: q, mode: 'insensitive' } } },
+          { name: { contains: q, mode: 'insensitive' } },
+          { sku: { contains: q, mode: 'insensitive' } },
+          { slug: { contains: q, mode: 'insensitive' } },
+          { brand: { name: { contains: q, mode: 'insensitive' } } },
+          { brand: { slug: { contains: q, mode: 'insensitive' } } },
+        ],
+      }
+    }
+
+    // Category alias + keyword query (e.g. 'màn hình asus', 'card màn hình msi')
+    return {
+      OR: [
+        {
+          AND: [
+            { category: { slug: matchedRule.categorySlug } },
+            {
+              OR: [
+                { name: { contains: remainingWords, mode: 'insensitive' } },
+                { sku: { contains: remainingWords, mode: 'insensitive' } },
+                { slug: { contains: remainingWords, mode: 'insensitive' } },
+                { brand: { name: { contains: remainingWords, mode: 'insensitive' } } },
+                { brand: { slug: { contains: remainingWords, mode: 'insensitive' } } },
+              ],
+            },
+          ],
+        },
+        { name: { contains: q, mode: 'insensitive' } },
+        { sku: { contains: q, mode: 'insensitive' } },
+        { slug: { contains: q, mode: 'insensitive' } },
+        { brand: { name: { contains: q, mode: 'insensitive' } } },
+        { brand: { slug: { contains: q, mode: 'insensitive' } } },
+      ],
+    }
+  }
+
+  // Standard search across product identifiers, brand, and category
+  return {
+    OR: [
+      { name: { contains: q, mode: 'insensitive' } },
+      { sku: { contains: q, mode: 'insensitive' } },
+      { slug: { contains: q, mode: 'insensitive' } },
+      { category: { name: { contains: q, mode: 'insensitive' } } },
+      { category: { slug: { contains: q, mode: 'insensitive' } } },
+      { brand: { name: { contains: q, mode: 'insensitive' } } },
+      { brand: { slug: { contains: q, mode: 'insensitive' } } },
+    ],
+  }
+}
+
 export async function getProducts(options: {
   page?: number
   limit?: number
   search?: string
   categoryId?: string
+  categorySlug?: string
   brandId?: string
+  brandSlug?: string
   minPrice?: number
   maxPrice?: number
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
+  requireCategory?: boolean
+  includeInactive?: boolean
+  specSocket?: string
+  specRamType?: string
+  specCapacity?: string
+  specInterface?: string
+  specFormFactor?: string
+  specWattage?: string
+  specResolution?: string
 }) {
+  const hasBrand = Boolean(options.brandId || options.brandSlug)
+  const hasCategory = Boolean(options.categoryId || options.categorySlug)
+  if (options.requireCategory && hasBrand && !hasCategory) {
+    throw {
+      status: 400,
+      message: 'Vui lòng chọn danh mục trước khi lọc theo thương hiệu',
+      requiresCategory: true,
+      code: 'CATEGORY_REQUIRED',
+    }
+  }
+
   const page = Math.max(1, options.page ?? 1)
   const limit = Math.min(100, Math.max(1, options.limit ?? 20))
   const skip = (page - 1) * limit
 
-  const where: any = { }
+  const andConditions: any[] = []
+
+  if (!options.includeInactive) {
+    andConditions.push({ isActive: true })
+  }
 
   if (options.search) {
-    const q = options.search
-    where.OR = [
-      { name: { contains: q, mode: 'insensitive' } },
-      { sku: { contains: q, mode: 'insensitive' } },
-      { slug: { contains: q, mode: 'insensitive' } },
-    ]
+    const searchCond = buildSearchCondition(options.search)
+    if (searchCond) {
+      andConditions.push(searchCond)
+    }
   }
 
-  if (options.categoryId) where.categoryId = options.categoryId
-  if (options.brandId) where.brandId = options.brandId
-  if (options.minPrice !== undefined || options.maxPrice !== undefined) {
-    where.price = {}
-    if (options.minPrice !== undefined) where.price.gte = options.minPrice
-    if (options.maxPrice !== undefined) where.price.lte = options.maxPrice
+  if (options.categoryId) {
+    andConditions.push({ categoryId: options.categoryId })
+  } else if (options.categorySlug) {
+    const rawSlugs = options.categorySlug.split(',').map((s) => s.trim()).filter(Boolean)
+    if (rawSlugs.length > 1) {
+      const lowerSlugs = rawSlugs.map((s) => s.toLowerCase())
+      andConditions.push({
+        OR: [
+          { categoryId: { in: rawSlugs } },
+          { category: { slug: { in: lowerSlugs } } },
+          { category: { parent: { slug: { in: lowerSlugs } } } },
+          ...rawSlugs.map((s) => ({ category: { name: { equals: s, mode: 'insensitive' as const } } })),
+          ...rawSlugs.map((s) => ({ category: { parent: { name: { equals: s, mode: 'insensitive' as const } } } })),
+        ],
+      })
+    } else if (rawSlugs.length === 1) {
+      const s = rawSlugs[0]
+      const sLower = s.toLowerCase()
+      andConditions.push({
+        OR: [
+          { categoryId: s },
+          { category: { slug: { equals: sLower, mode: 'insensitive' as const } } },
+          { category: { name: { equals: s, mode: 'insensitive' as const } } },
+          { category: { parent: { slug: { equals: sLower, mode: 'insensitive' as const } } } },
+          { category: { parent: { name: { equals: s, mode: 'insensitive' as const } } } },
+        ],
+      })
+    }
   }
+
+  if (options.brandId) {
+    andConditions.push({ brandId: options.brandId })
+  } else if (options.brandSlug) {
+    const b = options.brandSlug.trim()
+    const bLower = b.toLowerCase()
+    andConditions.push({
+      OR: [
+        { brandId: b },
+        { brand: { slug: { equals: bLower, mode: 'insensitive' as const } } },
+        { brand: { name: { equals: b, mode: 'insensitive' as const } } },
+      ],
+    })
+  }
+
+  if (options.minPrice !== undefined || options.maxPrice !== undefined) {
+    const priceCondition: any = {}
+    if (options.minPrice !== undefined) priceCondition.gte = options.minPrice
+    if (options.maxPrice !== undefined) priceCondition.lte = options.maxPrice
+    andConditions.push({ price: priceCondition })
+  }
+
+  if (options.specSocket) {
+    const s = options.specSocket.trim()
+    if (s) {
+      andConditions.push({
+        OR: [
+          { specifications: { some: { socket: { contains: s, mode: 'insensitive' } } } },
+          { name: { contains: s, mode: 'insensitive' } },
+        ],
+      })
+    }
+  }
+
+  if (options.specRamType) {
+    const r = options.specRamType.trim()
+    if (r) {
+      andConditions.push({
+        OR: [
+          { specifications: { some: { ramType: { contains: r, mode: 'insensitive' } } } },
+          { name: { contains: r, mode: 'insensitive' } },
+        ],
+      })
+    }
+  }
+
+  if (options.specCapacity) {
+    const c = options.specCapacity.trim()
+    if (c) {
+      andConditions.push({ name: { contains: c, mode: 'insensitive' } })
+    }
+  }
+
+  if (options.specInterface) {
+    const i = options.specInterface.trim()
+    if (i) {
+      andConditions.push({
+        OR: [
+          { specifications: { some: { interface: { contains: i, mode: 'insensitive' } } } },
+          { name: { contains: i, mode: 'insensitive' } },
+        ],
+      })
+    }
+  }
+
+  if (options.specFormFactor) {
+    const f = options.specFormFactor.trim()
+    if (f) {
+      andConditions.push({
+        OR: [
+          { specifications: { some: { formFactor: { contains: f, mode: 'insensitive' } } } },
+          { name: { contains: f, mode: 'insensitive' } },
+        ],
+      })
+    }
+  }
+
+  if (options.specWattage) {
+    const w = options.specWattage.trim()
+    if (w) {
+      andConditions.push({ name: { contains: w, mode: 'insensitive' } })
+    }
+  }
+
+  if (options.specResolution) {
+    const res = options.specResolution.trim()
+    if (res) {
+      andConditions.push({ name: { contains: res, mode: 'insensitive' } })
+    }
+  }
+
+  const where: any = andConditions.length > 0 ? { AND: andConditions } : {}
 
   const allowedSort = new Set(['price', 'name', 'createdAt'])
   const orderBy: any = {}
@@ -69,8 +392,30 @@ export async function getProducts(options: {
         salePrice: true,
         stock: true,
         createdAt: true,
+        categoryId: true,
+        brandId: true,
         category: { select: { id: true, name: true, slug: true } },
         brand: { select: { id: true, name: true, slug: true } },
+        images: {
+          select: { url: true, alt: true, sortOrder: true },
+          orderBy: { sortOrder: 'asc' },
+          take: 1,
+        },
+        specifications: {
+          select: {
+            socket: true,
+            ramType: true,
+            ramSlots: true,
+            maxRam: true,
+            tdp: true,
+            length: true,
+            height: true,
+            wattage: true,
+            type: true,
+            capacity: true,
+            formFactor: true,
+          },
+        },
       }
     }),
     prisma.product.count({ where }),
@@ -87,12 +432,18 @@ export async function getProducts(options: {
   }
 }
 
-export async function getProductById(id: string) {
-  return prisma.product.findUnique({ where: { id }, include: { category: true, brand: true } })
+export async function getProductById(id: string, includeInactive = false) {
+  const product = await prisma.product.findUnique({ where: { id }, include: { category: true, brand: true } })
+  if (!product) return null
+  if (!includeInactive && !product.isActive) return null
+  return product
 }
 
-export async function getProductBySlug(slug: string) {
-  return prisma.product.findUnique({ where: { slug }, include: { category: true, brand: true } })
+export async function getProductBySlug(slug: string, includeInactive = false) {
+  const product = await prisma.product.findUnique({ where: { slug }, include: { category: true, brand: true } })
+  if (!product) return null
+  if (!includeInactive && !product.isActive) return null
+  return product
 }
 
 export async function createProduct(data: ProductCreateInput) {

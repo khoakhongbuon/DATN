@@ -1,39 +1,27 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { API_BASE_URL, apiFetch } from './cart'
 
 export type AuthUser = {
   id: string
-  name: string
+  name: string | null
   email: string
   phone?: string | null
   role?: string
+  googleLinked?: boolean
 }
 
 type AuthContextValue = {
   user: AuthUser | null
-  token: string
   loading: boolean
   authenticated: boolean
   login: (email: string, password: string) => Promise<void>
   register: (name: string, email: string, password: string) => Promise<void>
-  logout: () => void
+  googleLogin: (credential: string) => Promise<void>
+  linkGoogle: (credential: string) => Promise<void>
+  logout: () => Promise<void>
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
-const TOKEN_KEY = 'tk_auth_token'
-const USER_KEY = 'tk_auth_user'
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
-
-function readStoredSession() {
-  if (typeof window === 'undefined') return { token: '', user: null as AuthUser | null }
-  const token = window.localStorage.getItem(TOKEN_KEY) || ''
-  const rawUser = window.localStorage.getItem(USER_KEY)
-  if (!token || !rawUser) return { token, user: null }
-  try {
-    return { token, user: JSON.parse(rawUser) as AuthUser }
-  } catch {
-    return { token, user: null }
-  }
-}
 
 function responseMessage(payload: unknown, fallback: string) {
   if (payload && typeof payload === 'object') {
@@ -44,70 +32,99 @@ function responseMessage(payload: unknown, fallback: string) {
   return fallback
 }
 
+async function readPayload(response: Response) {
+  return await response.json() as {
+    success?: boolean
+    data?: AuthUser | { user?: AuthUser }
+    message?: string
+    error?: string
+  }
+}
+
+function payloadUser(data: AuthUser | { user?: AuthUser } | undefined) {
+  if (!data) return undefined
+  return 'id' in data ? data : data.user
+}
+
+export function safeReturnUrl(value: unknown) {
+  if (
+    typeof value === 'string'
+    && value.startsWith('/')
+    && !value.startsWith('//')
+    && !value.includes('\\')
+  ) {
+    return value
+  }
+  return '/'
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [token, setToken] = useState('')
   const [loading, setLoading] = useState(true)
 
-  const clearSession = useCallback(() => {
-    window.localStorage.removeItem(TOKEN_KEY)
-    window.localStorage.removeItem(USER_KEY)
-    setToken('')
-    setUser(null)
-  }, [])
-
   useEffect(() => {
-    const session = readStoredSession()
-    if (!session.token) {
-      setLoading(false)
-      return
-    }
     let active = true
-    fetch(`${API_BASE_URL}/api/auth/me`, {
-      headers: { Accept: 'application/json', Authorization: `Bearer ${session.token}` },
+    apiFetch(`${API_BASE_URL}/api/auth/me`, {
+      headers: { Accept: 'application/json' },
     })
       .then(async (response) => {
-        const payload = await response.json() as { success?: boolean; data?: AuthUser; message?: string }
-        if (!response.ok || !payload.data) throw new Error(responseMessage(payload, 'Phiên đăng nhập đã hết hạn.'))
-        if (!active) return
-        setToken(session.token)
-        setUser(payload.data)
-        window.localStorage.setItem(USER_KEY, JSON.stringify(payload.data))
+        const payload = await readPayload(response)
+        const authenticatedUser = payloadUser(payload.data)
+        if (!response.ok || !authenticatedUser) {
+          if (response.status !== 401) {
+            throw new Error(responseMessage(payload, 'Không thể kiểm tra phiên đăng nhập.'))
+          }
+          return
+        }
+        if (active) setUser(authenticatedUser)
       })
       .catch(() => {
-        if (active) clearSession()
+        if (active) setUser(null)
       })
       .finally(() => {
         if (active) setLoading(false)
       })
     return () => { active = false }
-  }, [clearSession])
+  }, [])
 
   const authenticate = useCallback(async (path: string, body: Record<string, string>) => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/${path}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/auth/${path}`, {
       method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    const payload = await response.json() as { data?: { token?: string; user?: AuthUser }; message?: string; error?: string }
-    if (!response.ok || !payload.data?.token || !payload.data.user) {
+    const payload = await readPayload(response)
+    const authenticatedUser = payloadUser(payload.data)
+    if (!response.ok || !authenticatedUser) {
       throw new Error(responseMessage(payload, 'Không thể xác thực tài khoản.'))
     }
-    window.localStorage.setItem(TOKEN_KEY, payload.data.token)
-    window.localStorage.setItem(USER_KEY, JSON.stringify(payload.data.user))
-    setToken(payload.data.token)
-    setUser(payload.data.user)
+    setUser(authenticatedUser)
+  }, [])
+
+  const logout = useCallback(async () => {
+    const response = await apiFetch(`${API_BASE_URL}/api/auth/logout`, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+    })
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null)
+      throw new Error(responseMessage(payload, 'Không thể đăng xuất. Vui lòng thử lại.'))
+    }
+    setUser(null)
   }, [])
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
-    token,
     loading,
-    authenticated: Boolean(user && token),
+    authenticated: Boolean(user),
     login: (email, password) => authenticate('login', { email, password }),
     register: (name, email, password) => authenticate('register', { name, email, password }),
-    logout: clearSession,
-  }), [authenticate, clearSession, loading, token, user])
+    googleLogin: (credential) => authenticate('google', { credential }),
+    linkGoogle: async (credential) => {
+      await authenticate('google/link', { credential })
+    },
+    logout,
+  }), [authenticate, loading, logout, user])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
@@ -117,5 +134,3 @@ export function useAuth() {
   if (!context) throw new Error('useAuth must be used inside AuthProvider')
   return context
 }
-
-export const authStorageKeys = { token: TOKEN_KEY, user: USER_KEY }

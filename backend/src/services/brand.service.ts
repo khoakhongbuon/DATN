@@ -1,6 +1,48 @@
 import prisma from '../config/prisma'
 
-export async function getAllBrands() {
+export async function getAllBrands(categorySlugOrId?: string) {
+  if (categorySlugOrId) {
+    const rawSlugs = categorySlugOrId.split(',').map((s) => s.trim()).filter(Boolean)
+    if (rawSlugs.length > 1) {
+      const lowerSlugs = rawSlugs.map((s) => s.toLowerCase())
+      return prisma.brand.findMany({
+        where: {
+          products: {
+            some: {
+              OR: [
+                { categoryId: { in: rawSlugs } },
+                { category: { slug: { in: lowerSlugs } } },
+                { category: { parent: { slug: { in: lowerSlugs } } } },
+                ...rawSlugs.map((s) => ({ category: { name: { equals: s, mode: 'insensitive' as const } } })),
+                ...rawSlugs.map((s) => ({ category: { parent: { name: { equals: s, mode: 'insensitive' as const } } } })),
+              ],
+            },
+          },
+        },
+        orderBy: { name: 'asc' },
+      })
+    }
+    if (rawSlugs.length === 1) {
+      const s = rawSlugs[0]
+      const sLower = s.toLowerCase()
+      return prisma.brand.findMany({
+        where: {
+          products: {
+            some: {
+              OR: [
+                { categoryId: s },
+                { category: { slug: { equals: sLower, mode: 'insensitive' as const } } },
+                { category: { name: { equals: s, mode: 'insensitive' as const } } },
+                { category: { parent: { slug: { equals: sLower, mode: 'insensitive' as const } } } },
+                { category: { parent: { name: { equals: s, mode: 'insensitive' as const } } } },
+              ],
+            },
+          },
+        },
+        orderBy: { name: 'asc' },
+      })
+    }
+  }
   return prisma.brand.findMany({ orderBy: { name: 'asc' } })
 }
 

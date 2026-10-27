@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../lib/auth'
-import { API_BASE_URL, cartHeaders } from '../../lib/cart'
+import { API_BASE_URL, apiFetch, cartHeaders } from '../../lib/cart'
 
 type OrderSummary = {
   id: string
@@ -55,7 +55,7 @@ function apiMessage(payload: ApiPayload<unknown>, fallback: string) {
 
 export default function OrdersPage() {
   const router = useRouter()
-  const { token, authenticated, loading: authLoading } = useAuth()
+  const { authenticated, loading: authLoading } = useAuth()
   const [orders, setOrders] = useState<OrderSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -65,9 +65,9 @@ export default function OrdersPage() {
     setLoading(true)
     setError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/orders`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/orders`, {
         signal,
-        headers: cartHeaders(token),
+        headers: cartHeaders(),
       })
       const payload = await response.json() as ApiPayload<OrderSummary[]>
       if (response.status === 401) {
@@ -81,7 +81,7 @@ export default function OrdersPage() {
     } finally {
       if (!signal.aborted) setLoading(false)
     }
-  }, [router, token])
+  }, [router])
 
   useEffect(() => {
     if (authLoading) return

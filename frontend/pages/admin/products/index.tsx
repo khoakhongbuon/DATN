@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AdminLayout } from '../../../components/admin/AdminLayout'
 import { ProductImageFallback } from '../../../components/ProductImageFallback'
 import { useAuth } from '../../../lib/auth'
+import { apiFetch } from '../../../lib/cart'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
 
@@ -31,7 +32,7 @@ const formatPrice = (value: number) => new Intl.NumberFormat('vi-VN', { style: '
 
 export default function AdminProductsPage() {
   const router = useRouter()
-  const { user, token, loading, authenticated } = useAuth()
+  const { user, loading, authenticated } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [brands, setBrands] = useState<Brand[]>([])
@@ -95,10 +96,13 @@ export default function AdminProductsPage() {
       setLoadingProducts(true)
       setError('')
 
-      const params = new URLSearchParams({ page: String(page), limit: '12', sortBy, sortOrder })
+      const params = new URLSearchParams({ page: String(page), limit: '12', sortBy, sortOrder, includeInactive: 'true' })
       if (search.trim()) params.set('search', search.trim())
       if (categoryId) params.set('categoryId', categoryId)
-      if (brandId) params.set('brandId', brandId)
+      if (brandId) {
+        params.set('brandId', brandId)
+        params.set('allowAllCategories', 'true')
+      }
       if (minPrice) params.set('minPrice', minPrice)
       if (maxPrice) params.set('maxPrice', maxPrice)
 
@@ -161,9 +165,9 @@ export default function AdminProductsPage() {
   const deleteProduct = async (id: string) => {
     if (!window.confirm('Bạn có chắc muốn xóa sản phẩm này?')) return
     try {
-      const response = await fetch(`${API_BASE_URL}/api/products/${id}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/products/${id}`, {
         method: 'DELETE',
-        headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+        headers: { Accept: 'application/json' },
       })
       const payload = await response.json() as { success?: boolean; message?: string }
       if (!response.ok || !payload.success) throw new Error(payload.message || 'Xóa sản phẩm thất bại.')

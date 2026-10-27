@@ -4,8 +4,8 @@ import {
   API_BASE_URL,
   Cart,
   CartItem,
+  apiFetch,
   cartHeaders,
-  getStoredCartIdentity,
   productDiscount,
   productPrice,
 } from '../lib/cart'
@@ -27,7 +27,7 @@ export default function CartPage() {
   const [retry, setRetry] = useState(0)
   const [busyItems, setBusyItems] = useState<Record<string, boolean>>({})
   const [clearing, setClearing] = useState(false)
-  const { user, token, authenticated, loading: authLoading } = useAuth()
+  const { user, authenticated, loading: authLoading } = useAuth()
 
   const loadCart = useCallback(async (signal?: AbortSignal) => {
     const userId = user?.id || ''
@@ -41,9 +41,9 @@ export default function CartPage() {
     setLoading(true)
     setError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/cart/${encodeURIComponent(userId)}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/cart/${encodeURIComponent(userId)}`, {
         signal,
-        headers: cartHeaders(token),
+        headers: cartHeaders(),
       })
       if (!response.ok) throw new Error('Không thể tải giỏ hàng.')
       const payload = await response.json() as { success: boolean; data: Cart | null }
@@ -54,7 +54,7 @@ export default function CartPage() {
     } finally {
       if (!signal?.aborted) setLoading(false)
     }
-  }, [token, user?.id])
+  }, [user?.id])
 
   useEffect(() => {
     if (authLoading) return
@@ -80,9 +80,9 @@ export default function CartPage() {
     setBusyItems((previous) => ({ ...previous, [item.id]: true }))
     setNotice('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/cart/${encodeURIComponent(userId)}/items/${encodeURIComponent(item.id)}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/cart/${encodeURIComponent(userId)}/items/${encodeURIComponent(item.id)}`, {
         method: 'PUT',
-        headers: cartHeaders(token, true),
+        headers: cartHeaders(true),
         body: JSON.stringify({ quantity: boundedQuantity }),
       })
       if (!response.ok) throw new Error('Không thể cập nhật số lượng.')
@@ -101,9 +101,9 @@ export default function CartPage() {
     setBusyItems((previous) => ({ ...previous, [item.id]: true }))
     setNotice('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/cart/${encodeURIComponent(userId)}/items/${encodeURIComponent(item.id)}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/cart/${encodeURIComponent(userId)}/items/${encodeURIComponent(item.id)}`, {
         method: 'DELETE',
-        headers: cartHeaders(token),
+        headers: cartHeaders(),
       })
       if (!response.ok) throw new Error('Không thể xóa sản phẩm.')
       window.dispatchEvent(new Event('tk-cart-updated'))
@@ -121,9 +121,9 @@ export default function CartPage() {
     setClearing(true)
     setNotice('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/cart/${encodeURIComponent(userId)}/items`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/cart/${encodeURIComponent(userId)}/items`, {
         method: 'DELETE',
-        headers: cartHeaders(token),
+        headers: cartHeaders(),
       })
       if (!response.ok) throw new Error('Không thể xóa giỏ hàng.')
       window.dispatchEvent(new Event('tk-cart-updated'))

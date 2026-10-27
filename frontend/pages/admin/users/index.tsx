@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/router'
 import { AdminLayout } from '../../../components/admin/AdminLayout'
 import { useAuth } from '../../../lib/auth'
+import { apiFetch } from '../../../lib/cart'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
 
@@ -76,7 +77,7 @@ function formatDate(isoString: string): string {
 
 export default function AdminUsersPage() {
   const router = useRouter()
-  const { user, token, loading, authenticated } = useAuth()
+  const { user, loading, authenticated } = useAuth()
 
   // List data state
   const [users, setUsers] = useState<UserItem[]>([])
@@ -126,7 +127,7 @@ export default function AdminUsersPage() {
   // Fetch users list
   const loadUsers = useCallback(
     async (signal?: AbortSignal) => {
-      if (!token) return
+      if (!authenticated) return
       setLoadingList(true)
       setListError('')
 
@@ -144,12 +145,8 @@ export default function AdminUsersPage() {
           queryParams.set('role', roleFilter)
         }
 
-        const res = await fetch(`${API_BASE_URL}/api/users?${queryParams.toString()}`, {
+        const res = await apiFetch(`/api/users?${queryParams.toString()}`, {
           signal,
-          headers: {
-            Accept: 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
         })
 
         const payload = (await res.json()) as {
@@ -191,7 +188,7 @@ export default function AdminUsersPage() {
         setLoadingList(false)
       }
     },
-    [activeSearch, limit, page, refreshNonce, roleFilter, token]
+    [activeSearch, authenticated, limit, page, refreshNonce, roleFilter]
   )
 
   useEffect(() => {
@@ -230,12 +227,10 @@ export default function AdminUsersPage() {
 
     setCreateSubmitting(true)
     try {
-      const res = await fetch(`${API_BASE_URL}/api/users`, {
+      const res = await apiFetch(`/api/users`, {
         method: 'POST',
         headers: {
-          Accept: 'application/json',
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: createForm.name.trim() || undefined,
@@ -302,12 +297,10 @@ export default function AdminUsersPage() {
         bodyPayload.password = editForm.password.trim()
       }
 
-      const res = await fetch(`${API_BASE_URL}/api/users/${editingUser.id}`, {
+      const res = await apiFetch(`/api/users/${editingUser.id}`, {
         method: 'PUT',
         headers: {
-          Accept: 'application/json',
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(bodyPayload),
       })
@@ -339,12 +332,8 @@ export default function AdminUsersPage() {
     setDeleteSubmitting(true)
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/users/${deletingUser.id}`, {
+      const res = await apiFetch(`/api/users/${deletingUser.id}`, {
         method: 'DELETE',
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
       })
 
       const payload = await res.json()

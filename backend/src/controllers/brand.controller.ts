@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express'
 import * as service from '../services/brand.service'
 
-export async function listBrands(_req: Request, res: Response, next: NextFunction) {
+export async function listBrands(req: Request, res: Response, next: NextFunction) {
   try {
-    const data = await service.getAllBrands()
+    const category = (req.query.category || req.query.categorySlug || req.query.categoryId) as string | undefined
+    const data = await service.getAllBrands(category)
     return res.json({ success: true, data })
   } catch (err) { next(err) }
 }

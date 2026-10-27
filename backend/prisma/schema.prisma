@@ -52,19 +52,33 @@ enum ComponentType {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  name      String?
-  email     String    @unique
-  password  String
-  phone     String?
-  role      Role      @default(USER)
-  addresses Address[]
-  carts     Cart[]
-  orders    Order[]
-  reviews   Review[]
-  pcBuilds  PCBuild[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  name         String?
+  email        String    @unique
+  password     String?
+  googleSubject String?  @unique
+  phone        String?
+  role         Role      @default(USER)
+  addresses    Address[]
+  carts        Cart[]
+  orders       Order[]
+  reviews      Review[]
+  pcBuilds     PCBuild[]
+  sessions     Session[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Address {

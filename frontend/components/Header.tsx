@@ -1,7 +1,10 @@
 import Link from 'next/link'
+import { useRouter } from 'next/router'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../lib/auth'
-import { API_BASE_URL, cartHeaders } from '../lib/cart'
+import { API_BASE_URL, apiFetch, cartHeaders } from '../lib/cart'
+import { GoogleSignInButton } from './GoogleSignInButton'
+import { SearchAutocomplete } from './SearchAutocomplete'
 
 type NavItem = {
   label: string
@@ -9,15 +12,54 @@ type NavItem = {
   icon: ReactNode
 }
 
+export const pcComponentLinks = [
+  { label: 'CPU', href: '/products?category=cpu' },
+  { label: 'Mainboard', href: '/products?category=mainboard' },
+  { label: 'RAM', href: '/products?category=ram' },
+  { label: 'Card đồ họa (VGA/GPU)', href: '/products?category=gpu' },
+  { label: 'SSD', href: '/products?category=ssd' },
+  { label: 'HDD', href: '/products?category=hdd' },
+  { label: 'Nguồn máy tính (PSU)', href: '/products?category=psu' },
+  { label: 'Vỏ case', href: '/products?category=case' },
+  { label: 'Tản nhiệt CPU', href: '/products?category=cpu-cooler' },
+  { label: 'Card Wi-Fi', href: '/products?category=wifi-card' },
+]
+
+export const gearLinks = [
+  { label: 'Bàn phím', href: '/products?category=keyboard' },
+  { label: 'Chuột', href: '/products?category=mouse' },
+  { label: 'Tai nghe', href: '/products?category=headset' },
+  { label: 'Lót chuột (Mousepad)', href: '/products?category=mousepad' },
+  { label: 'Tay cầm chơi game', href: '/products?category=controller' },
+]
+
+export const monitorSublinks = [
+  { label: 'Tất cả màn hình', href: '/products?category=monitor' },
+  { label: 'Màn hình ASUS', href: '/products?category=monitor&brand=asus' },
+  { label: 'Màn hình LG', href: '/products?category=monitor&brand=lg' },
+  { label: 'Màn hình Samsung', href: '/products?category=monitor&brand=samsung' },
+  { label: 'Màn hình MSI', href: '/products?category=monitor&brand=msi' },
+  { label: 'Màn hình Gigabyte', href: '/products?category=monitor&brand=gigabyte' },
+  { label: 'Màn hình AOC', href: '/products?category=monitor&brand=aoc' },
+  { label: 'Màn hình ViewSonic', href: '/products?category=monitor&brand=viewsonic' },
+  { label: 'Màn hình 144Hz - 180Hz', href: '/products?category=monitor&search=180Hz' },
+  { label: 'Màn hình 2K QHD', href: '/products?category=monitor&specResolution=2K' },
+  { label: 'Màn hình 4K UHD', href: '/products?category=monitor&specResolution=4K' },
+]
+
+export const officeLinks = [
+  { label: 'Máy in văn phòng', href: '/products?category=printer' },
+  { label: 'Card mạng WiFi', href: '/products?category=wifi-card' },
+  { label: 'Webcam họp trực tuyến', href: '/products?category=webcam' },
+]
+
 const mainNavigation: NavItem[] = [
-  { label: 'PC', href: '#', icon: <DesktopIcon /> },
-  { label: 'Laptop', href: '#', icon: <LaptopIcon /> },
-  { label: 'Mini PC', href: '#', icon: <MiniPcIcon /> },
-  { label: 'PC AI', href: '#', icon: <ChipIcon /> },
-  { label: 'Linh kiện PC', href: '#', icon: <WrenchIcon /> },
-  { label: 'Màn hình', href: '#', icon: <MonitorIcon /> },
-  { label: 'Phím chuột ghế gear', href: '#', icon: <GamepadIcon /> },
-  { label: 'Tra cứu bảo hành', href: '#', icon: <ShieldIcon /> },
+  { label: 'Xây dựng PC', href: '/pc-builder', icon: <DesktopIcon /> },
+  { label: 'Linh kiện máy tính', href: '/products?category=cpu,mainboard,gpu,ram,ssd,hdd,psu,case,cpu-cooler', icon: <WrenchIcon /> },
+  { label: 'Màn hình', href: '/products?category=monitor', icon: <MonitorIcon /> },
+  { label: 'Phím chuột ghế gear', href: '/products?category=keyboard,mouse,headset,mousepad,controller', icon: <GamepadIcon /> },
+  { label: 'Thiết bị văn phòng', href: '/products?category=wifi-card,printer,webcam', icon: <BriefcaseIcon /> },
+  { label: 'Tất cả sản phẩm', href: '/products', icon: <StorageIcon /> },
 ]
 
 const topActions: NavItem[] = [
@@ -29,59 +71,372 @@ const topActions: NavItem[] = [
 ]
 
 const megaColumns = [
-  { title: 'Linh kiện máy tính', items: ['CPU', 'VGA / GPU', 'Mainboard', 'RAM', 'SSD', 'HDD', 'PSU', 'Case', 'Tản nhiệt'] },
-  { title: 'Thiết bị', items: ['Laptop', 'Mini PC', 'Màn hình', 'Keyboard', 'Mouse', 'Headset', 'Gaming Gear'] },
+  { title: 'Linh kiện máy tính', items: ['CPU', 'Card đồ họa (VGA/GPU)', 'Mainboard', 'RAM', 'SSD', 'HDD', 'PSU', 'Case', 'Tản nhiệt CPU', 'Card Wi-Fi'] },
+  { title: 'Thiết bị & Màn hình', items: ['Màn hình', 'Bàn phím', 'Chuột', 'Tai nghe', 'Tay cầm', 'Máy in', 'Webcam'] },
 ]
 
-type MegaGroup = { title: string; links: string[] }
+type MegaLinkItem = { label: string; href: string }
+type MegaGroup = { title: string; links: (string | MegaLinkItem)[] }
 type MegaCategory = { label: string; icon: ReactNode; groups: MegaGroup[] }
+
+function getCategorySlugFromLabel(categoryLabel: string): string {
+  const lower = categoryLabel.toLowerCase().trim()
+  if (lower.includes('laptop')) return ''
+  if (lower.startsWith('pc')) return ''
+  if (lower === 'cpu' || lower.includes('vi xử lý')) return 'cpu'
+  if (lower.includes('vga') || lower.includes('card màn hình')) return 'gpu'
+  if (lower.includes('mainboard') || lower.includes('bo mạch')) return 'mainboard'
+  if (lower === 'ram' || lower.includes('bộ nhớ trong')) return 'ram'
+  if (lower.includes('ssd / hdd') || lower.includes('thiết bị lưu trữ') || lower.includes('ổ cứng')) return 'ssd,hdd'
+  if (lower.includes('psu') || lower.includes('nguồn')) return 'psu'
+  if (lower === 'case' || lower.includes('vỏ')) return 'case'
+  if (lower.includes('tản nhiệt')) return 'cpu-cooler'
+  if (lower.includes('màn hình')) return 'monitor'
+  if (lower.includes('bàn phím')) return 'keyboard'
+  if (lower.includes('chuột')) return 'mouse'
+  if (lower.includes('tai nghe') || lower.includes('loa')) return 'headset'
+  if (lower.includes('mousepad') || lower.includes('lót chuột')) return 'mousepad'
+  if (lower.includes('webcam')) return 'webcam'
+  if (lower.includes('tay cầm')) return 'controller'
+  if (lower.includes('mạng') || lower.includes('wifi')) return 'wifi-card'
+  if (lower.includes('máy in')) return 'printer'
+  if (lower.includes('linh kiện')) return 'cpu,mainboard,gpu,ram,ssd,hdd,psu,case,cpu-cooler'
+  if (lower.includes('phím') || lower.includes('gear')) return 'keyboard,mouse,headset,mousepad,controller'
+  return ''
+}
+
+function resolveMegaLink(categoryLabel: string, groupTitle: string, link: string | MegaLinkItem): { label: string; href: string } {
+  if (typeof link === 'object' && link !== null) return link
+  const label = link
+  const lowerGroup = groupTitle.toLowerCase()
+  const lowerLabel = label.toLowerCase()
+  let brandSlug = lowerLabel.replace(/\s+/g, '-').replace(/[^\w-]/g, '')
+  if (lowerLabel === 'g.skill' || lowerLabel === 'gskill') brandSlug = 'gskill'
+  if (lowerLabel === 'western digital' || lowerLabel === 'wd') brandSlug = 'wd'
+  if (lowerLabel === 'be quiet!' || lowerLabel === 'be quiet') brandSlug = 'be-quiet'
+  if (lowerLabel === 'apple macbook' || lowerLabel === 'macbook') brandSlug = 'apple'
+
+  const catSlug = getCategorySlugFromLabel(categoryLabel)
+
+  // 1. PC Gaming / PC Prebuild / Workstation -> Route to PC Builder or genuine components
+  if (categoryLabel === 'PC Gaming' || categoryLabel.startsWith('PC ')) {
+    if (lowerGroup.includes('gpu')) {
+      return { label, href: `/products?category=gpu&search=${encodeURIComponent(label)}` }
+    }
+    if (lowerGroup.includes('cpu')) {
+      return { label, href: `/products?category=cpu&search=${encodeURIComponent(label)}` }
+    }
+    if (lowerGroup.includes('màn hình')) {
+      return { label, href: '/products?category=monitor' }
+    }
+    if (lowerGroup.includes('gear') || lowerGroup.includes('phím')) {
+      return { label, href: '/products?category=keyboard,mouse,headset' }
+    }
+    return { label, href: '/pc-builder' }
+  }
+
+  // 2. Laptop -> currently updating
+  if (categoryLabel === 'Laptop') {
+    return { label, href: '/products' }
+  }
+
+  // 3. Brand / Manufacturer links
+  if (lowerGroup.includes('hãng') || lowerGroup.includes('thương hiệu')) {
+    if (categoryLabel === 'Apple') {
+      return { label, href: `/products?brand=apple&search=${encodeURIComponent(label)}` }
+    }
+    if (lowerGroup.includes('bàn phím')) {
+      return { label, href: `/products?category=keyboard&brand=${brandSlug}` }
+    }
+    if (lowerGroup.includes('chuột')) {
+      return { label, href: `/products?category=mouse&brand=${brandSlug}` }
+    }
+    if (lowerGroup.includes('tai nghe')) {
+      return { label, href: `/products?category=headset&brand=${brandSlug}` }
+    }
+    if (lowerGroup.includes('máy in')) {
+      return { label, href: `/products?category=printer&brand=${brandSlug}` }
+    }
+    if (catSlug) {
+      return { label, href: `/products?category=${catSlug}&brand=${brandSlug}` }
+    }
+    return { label, href: `/products?brand=${brandSlug}` }
+  }
+
+  // 4. Apple
+  if (categoryLabel === 'Apple') {
+    return { label, href: '/products' }
+  }
+
+  // Monitor subcategory filters
+  if (catSlug === 'monitor') {
+    if (lowerGroup.includes('kích thước')) {
+      if (lowerLabel.includes('24')) return { label, href: '/products?category=monitor&specCapacity=24' }
+      if (lowerLabel.includes('27')) return { label, href: '/products?category=monitor&specCapacity=27' }
+      if (lowerLabel.includes('32')) return { label, href: '/products?category=monitor&specCapacity=32' }
+    }
+    if (lowerGroup.includes('phân giải')) {
+      if (lowerLabel.includes('full hd') || lowerLabel.includes('1080')) return { label, href: '/products?category=monitor&specResolution=FHD' }
+      if (lowerLabel.includes('2k') || lowerLabel.includes('1440')) return { label, href: '/products?category=monitor&specResolution=2K' }
+      if (lowerLabel.includes('4k')) return { label, href: '/products?category=monitor&specResolution=4K' }
+    }
+    if (lowerGroup.includes('tần số quét')) {
+      return { label, href: `/products?category=monitor&search=${encodeURIComponent(label)}` }
+    }
+    if (lowerGroup.includes('nhu cầu')) {
+      if (lowerLabel.includes('gaming')) return { label, href: '/products?category=monitor&search=Gaming' }
+      if (lowerLabel.includes('đồ họa') || lowerLabel.includes('thiết kế')) return { label, href: '/products?category=monitor&search=IPS' }
+      return { label, href: `/products?category=monitor&search=${encodeURIComponent(label)}` }
+    }
+    return { label, href: `/products?category=monitor&search=${encodeURIComponent(label)}` }
+  }
+
+  // CPU filters
+  if (catSlug === 'cpu') {
+    if (lowerGroup.includes('socket')) {
+      return { label, href: `/products?category=cpu&specSocket=${encodeURIComponent(label)}` }
+    }
+    if (lowerGroup.includes('giá')) {
+      if (lowerLabel.includes('dưới 3')) return { label, href: '/products?category=cpu&maxPrice=3000000' }
+      if (lowerLabel.includes('3–5') || lowerLabel.includes('3-5')) return { label, href: '/products?category=cpu&minPrice=3000000&maxPrice=5000000' }
+      if (lowerLabel.includes('5–8') || lowerLabel.includes('5-8')) return { label, href: '/products?category=cpu&minPrice=5000000&maxPrice=8000000' }
+      if (lowerLabel.includes('8–12') || lowerLabel.includes('8-12')) return { label, href: '/products?category=cpu&minPrice=8000000&maxPrice=12000000' }
+      if (lowerLabel.includes('trên 12')) return { label, href: '/products?category=cpu&minPrice=12000000' }
+    }
+    return { label, href: `/products?category=cpu&search=${encodeURIComponent(label)}` }
+  }
+
+  // GPU filters
+  if (catSlug === 'gpu') {
+    return { label, href: `/products?category=gpu&search=${encodeURIComponent(label)}` }
+  }
+
+  // Mainboard filters
+  if (catSlug === 'mainboard') {
+    if (lowerGroup.includes('socket')) {
+      return { label, href: `/products?category=mainboard&specSocket=${encodeURIComponent(label)}` }
+    }
+    if (lowerGroup.includes('form factor')) {
+      return { label, href: `/products?category=mainboard&specFormFactor=${encodeURIComponent(label)}` }
+    }
+    return { label, href: `/products?category=mainboard&search=${encodeURIComponent(label)}` }
+  }
+
+  // RAM filters
+  if (catSlug === 'ram') {
+    if (lowerGroup.includes('thế hệ')) {
+      return { label, href: `/products?category=ram&specRamType=${encodeURIComponent(label)}` }
+    }
+    if (lowerGroup.includes('dung lượng')) {
+      return { label, href: `/products?category=ram&specCapacity=${encodeURIComponent(label)}` }
+    }
+    return { label, href: `/products?category=ram&search=${encodeURIComponent(label)}` }
+  }
+
+  // SSD / HDD filters
+  if (catSlug === 'ssd,hdd' || catSlug === 'ssd' || catSlug === 'hdd') {
+    if (lowerLabel === 'hdd' || lowerGroup === 'hdd' || lowerLabel.includes('hdd')) {
+      return { label, href: '/products?category=hdd' }
+    }
+    if (lowerGroup.includes('giao tiếp')) {
+      const iface = lowerLabel.includes('nvme') ? 'NVMe' : lowerLabel.includes('sata') ? 'SATA' : ''
+      if (iface) return { label, href: `/products?category=ssd&specInterface=${iface}` }
+    }
+    if (lowerGroup.includes('dung lượng')) {
+      return { label, href: `/products?category=ssd&specCapacity=${encodeURIComponent(label)}` }
+    }
+    return { label, href: `/products?category=ssd,hdd&search=${encodeURIComponent(label)}` }
+  }
+
+  // PSU filters
+  if (catSlug === 'psu') {
+    return { label, href: `/products?category=psu&search=${encodeURIComponent(label)}` }
+  }
+
+  // Case filters
+  if (catSlug === 'case') {
+    return { label, href: `/products?category=case&search=${encodeURIComponent(label)}` }
+  }
+
+  // Cooler filters
+  if (catSlug === 'cpu-cooler') {
+    return { label, href: `/products?category=cpu-cooler&search=${encodeURIComponent(label)}` }
+  }
+
+  // Gear filters
+  if (categoryLabel.includes('Phím') || categoryLabel.includes('gear')) {
+    if (label === 'Bàn phím' || lowerLabel.includes('bàn phím')) return { label, href: '/products?category=keyboard' }
+    if (label === 'Chuột' || lowerLabel.includes('chuột')) return { label, href: '/products?category=mouse' }
+    if (label === 'Tai nghe' || lowerLabel.includes('tai nghe')) return { label, href: '/products?category=headset' }
+    if (label === 'Mousepad' || lowerLabel.includes('lót chuột')) return { label, href: '/products?category=mousepad' }
+    if (label === 'Webcam') return { label, href: '/products?category=webcam' }
+    if (label === 'Tay cầm' || lowerLabel.includes('tay cầm')) return { label, href: '/products?category=controller' }
+  }
+
+  // Office equipment
+  if (categoryLabel.includes('văn phòng')) {
+    if (lowerLabel.includes('máy in')) return { label, href: '/products?category=printer' }
+    if (lowerLabel.includes('webcam')) return { label, href: '/products?category=webcam' }
+    return { label, href: `/products?category=printer,wifi-card,webcam&search=${encodeURIComponent(label)}` }
+  }
+
+  // Network equipment
+  if (categoryLabel.includes('mạng')) {
+    return { label, href: `/products?category=wifi-card&search=${encodeURIComponent(label)}` }
+  }
+
+  // Default fallback ALWAYS keeps category scope if known
+  if (catSlug) {
+    return { label, href: `/products?category=${catSlug}&search=${encodeURIComponent(label)}` }
+  }
+
+  return { label, href: `/products?search=${encodeURIComponent(label)}` }
+}
 
 const megaCategories: MegaCategory[] = [
   { label: 'PC Gaming', icon: <DesktopIcon />, groups: [
-    { title: 'Chọn theo mức giá', links: ['PC Gaming dưới 15 triệu', '15–20 triệu', '20–30 triệu', '30–40 triệu', '40–50 triệu', '50–70 triệu', 'Trên 70 triệu'] },
-    { title: 'Chọn theo GPU', links: ['RTX 3050', 'RTX 4060', 'RTX 4060 Ti', 'RTX 4070', 'RTX 4070 SUPER', 'RTX 4070 Ti SUPER', 'RTX 4080 SUPER', 'RTX 4090', 'RTX 5060', 'RTX 5070', 'RTX 5070 Ti', 'RTX 5080', 'RTX 5090', 'Radeon RX'] },
-    { title: 'Chọn theo CPU', links: ['Intel Core i5', 'Intel Core i7', 'Intel Core i9', 'Intel Core Ultra', 'AMD Ryzen 5', 'AMD Ryzen 7', 'AMD Ryzen 9'] },
-    { title: 'Chọn theo nhu cầu', links: ['Gaming Full HD', 'Gaming 2K', 'Gaming 4K', 'Esports', 'Streaming', 'Gaming cao cấp', 'Gaming RGB', 'PC nhỏ gọn'] },
-    { title: 'Chọn theo game', links: ['Valorant', 'CS2', 'PUBG', 'GTA V', 'GTA VI', 'Fortnite', 'League of Legends', 'Call of Duty', 'Minecraft', 'AAA Gaming'] },
+    {
+      title: 'Xây dựng cấu hình',
+      links: [
+        { label: 'Xây dựng PC Gaming', href: '/pc-builder' },
+        { label: 'Cấu hình tối ưu hiệu năng', href: '/pc-builder' },
+        { label: 'Tư vấn cấu hình với AI', href: '/pc-builder' },
+      ],
+    },
+    {
+      title: 'Linh kiện Gaming cốt lõi',
+      links: [
+        { label: 'Card đồ họa (VGA/GPU)', href: '/products?category=gpu' },
+        { label: 'Bộ vi xử lý (CPU)', href: '/products?category=cpu' },
+        { label: 'Bo mạch chủ (Mainboard)', href: '/products?category=mainboard' },
+        { label: 'Bộ nhớ trong (RAM)', href: '/products?category=ram' },
+        { label: 'Ổ cứng SSD Gaming', href: '/products?category=ssd' },
+      ],
+    },
+    {
+      title: 'GPU Gaming phổ biến',
+      links: [
+        { label: 'GeForce RTX 4060', href: '/products?category=gpu&search=RTX%204060' },
+        { label: 'GeForce RTX 4070 SUPER', href: '/products?category=gpu&search=RTX%204070' },
+        { label: 'GeForce RTX 4080 SUPER', href: '/products?category=gpu&search=RTX%204080' },
+        { label: 'GeForce RTX 5060 Ti', href: '/products?category=gpu&search=5060' },
+      ],
+    },
+    {
+      title: 'Màn hình & Gear Gaming',
+      links: [
+        { label: 'Màn hình Gaming 180Hz+', href: '/products?category=monitor&search=180Hz' },
+        { label: 'Màn hình 2K QHD', href: '/products?category=monitor&specResolution=2K' },
+        { label: 'Bàn phím cơ', href: '/products?category=keyboard' },
+        { label: 'Chuột Gaming', href: '/products?category=mouse' },
+        { label: 'Tai nghe Gaming', href: '/products?category=headset' },
+      ],
+    },
   ] },
   { label: 'PC Đồ họa - Làm việc', icon: <MonitorIcon />, groups: [
-    { title: 'Chọn theo nhu cầu', links: ['Văn phòng', 'Lập trình', 'Photoshop', 'Illustrator', 'Premiere Pro', 'After Effects', '3D Modeling', 'Blender', 'AutoCAD', 'SolidWorks', 'CAD/CAM', 'Render', 'Workstation'] },
-    { title: 'Chọn theo GPU', links: ['NVIDIA RTX', 'NVIDIA RTX Pro / Workstation', 'AMD Radeon', 'Intel Arc'] },
-    { title: 'Chọn theo CPU', links: ['Intel Core', 'Intel Core Ultra', 'Intel Xeon', 'AMD Ryzen', 'AMD Ryzen Threadripper'] },
-    { title: 'Chọn theo RAM', links: ['16GB', '32GB', '64GB', '128GB', '256GB+'] },
-    { title: 'Chọn theo mức giá', links: ['Dưới 15 triệu', '15–25 triệu', '25–40 triệu', '40–60 triệu', '60–100 triệu', 'Trên 100 triệu'] },
+    {
+      title: 'Xây dựng cấu hình',
+      links: [
+        { label: 'Xây dựng PC Đồ họa', href: '/pc-builder' },
+        { label: 'Cấu hình Render - Workstation', href: '/pc-builder' },
+        { label: 'Tư vấn cấu hình với AI', href: '/pc-builder' },
+      ],
+    },
+    {
+      title: 'Linh kiện Workstation',
+      links: [
+        { label: 'Card đồ họa (VGA)', href: '/products?category=gpu' },
+        { label: 'CPU đa nhân cao', href: '/products?category=cpu' },
+        { label: 'RAM 32GB - 64GB', href: '/products?category=ram' },
+        { label: 'SSD NVMe tốc độ cao', href: '/products?category=ssd' },
+      ],
+    },
+    {
+      title: 'Màn hình chuyên đồ họa',
+      links: [
+        { label: 'Màn hình chuẩn màu IPS', href: '/products?category=monitor&search=IPS' },
+        { label: 'Màn hình 2K QHD', href: '/products?category=monitor&specResolution=2K' },
+        { label: 'Màn hình 4K UHD', href: '/products?category=monitor&specResolution=4K' },
+      ],
+    },
   ] },
-  { label: 'Laptop', icon: <LaptopIcon />, groups: [
-    { title: 'Chọn theo hãng', links: ['ASUS', 'ROG', 'TUF Gaming', 'Acer', 'Nitro', 'Predator', 'Lenovo', 'Legion', 'LOQ', 'ThinkPad', 'IdeaPad', 'HP', 'Dell', 'MSI', 'Gigabyte', 'LG', 'Apple MacBook'] },
-    { title: 'Chọn theo nhu cầu', links: ['Laptop Gaming', 'Laptop văn phòng', 'Laptop sinh viên', 'Laptop đồ họa', 'Laptop lập trình', 'Laptop doanh nhân', 'Laptop AI', 'Laptop mỏng nhẹ', 'Laptop cao cấp', 'Laptop 2-in-1'] },
-    { title: 'Chọn theo CPU', links: ['Intel Core i3', 'Intel Core i5', 'Intel Core i7', 'Intel Core i9', 'Intel Core Ultra 5', 'Intel Core Ultra 7', 'Intel Core Ultra 9', 'AMD Ryzen 3', 'AMD Ryzen 5', 'AMD Ryzen 7', 'AMD Ryzen 9'] },
-    { title: 'Chọn theo GPU', links: ['RTX 3050', 'RTX 4050', 'RTX 4060', 'RTX 4070', 'RTX 4080', 'RTX 4090', 'RTX 5060', 'RTX 5070', 'RTX 5080', 'RTX 5090', 'Radeon', 'Intel Arc', 'Intel Graphics'] },
-    { title: 'Chọn theo kích thước', links: ['13 inch', '14 inch', '15.6 inch', '16 inch', '17.3 inch', '18 inch'] },
-    { title: 'Chọn theo RAM', links: ['8GB', '16GB', '32GB', '64GB', '128GB'] },
-    { title: 'Chọn theo ổ cứng', links: ['256GB SSD', '512GB SSD', '1TB SSD', '2TB SSD', 'SSD NVMe'] },
-    { title: 'Chọn theo mức giá', links: ['Dưới 15 triệu', '15–20 triệu', '20–30 triệu', '30–40 triệu', '40–50 triệu', 'Trên 50 triệu'] },
-    { title: 'Dòng nổi bật', links: ['ASUS ROG', 'ASUS TUF Gaming', 'Acer Nitro', 'Acer Predator', 'Lenovo Legion', 'Lenovo LOQ', 'MSI Gaming', 'HP Victus', 'HP Omen', 'Dell G Series', 'MacBook Air', 'MacBook Pro'] },
-  ] },
-  { label: 'Apple', icon: <AppleIcon />, groups: [
-    { title: 'Sản phẩm Apple', links: ['MacBook Air', 'MacBook Pro', 'iMac', 'Mac Mini', 'Màn hình Apple'] },
-    { title: 'Theo chip', links: ['Apple M1', 'Apple M2', 'Apple M3', 'Apple M4'] },
-  ] },
+  { label: 'Laptop', icon: <LaptopIcon />, groups: [] },
   { label: 'PC Văn phòng', icon: <BriefcaseIcon />, groups: [
-    { title: 'Chọn theo nhu cầu', links: ['Văn phòng', 'Học tập', 'Kế toán', 'Bán hàng', 'POS', 'Gia đình', 'Doanh nghiệp'] },
-    { title: 'Chọn theo mức giá', links: ['Dưới 8 triệu', '8–10 triệu', '10–15 triệu', '15–20 triệu', 'Trên 20 triệu'] },
+    {
+      title: 'Xây dựng cấu hình',
+      links: [
+        { label: 'Xây dựng PC Văn phòng', href: '/pc-builder' },
+        { label: 'PC Kế toán - Học tập', href: '/pc-builder' },
+      ],
+    },
+    {
+      title: 'Linh kiện văn phòng',
+      links: [
+        { label: 'CPU Văn phòng', href: '/products?category=cpu' },
+        { label: 'Bo mạch chủ', href: '/products?category=mainboard' },
+        { label: 'RAM 8GB - 16GB', href: '/products?category=ram' },
+        { label: 'Ổ cứng SSD', href: '/products?category=ssd' },
+      ],
+    },
+    {
+      title: 'Thiết bị văn phòng',
+      links: [
+        { label: 'Màn hình văn phòng', href: '/products?category=monitor' },
+        { label: 'Bàn phím & Chuột', href: '/products?category=keyboard,mouse' },
+        { label: 'Máy in', href: '/products?category=printer' },
+        { label: 'Card mạng WiFi', href: '/products?category=wifi-card' },
+      ],
+    },
   ] },
   { label: 'PC AI - Trí tuệ nhân tạo', icon: <ChipIcon />, groups: [
-    { title: 'Chọn theo nhu cầu', links: ['AI cá nhân', 'AI Developer', 'Machine Learning', 'Deep Learning', 'Generative AI', 'Local LLM', 'Computer Vision', 'AI Research', 'AI Workstation'] },
-    { title: 'Chọn theo GPU', links: ['RTX 4060 Ti', 'RTX 4070 Ti SUPER', 'RTX 4080 SUPER', 'RTX 4090', 'RTX 5070', 'RTX 5070 Ti', 'RTX 5080', 'RTX 5090', 'GPU VRAM cao'] },
-    { title: 'Chọn theo VRAM', links: ['8GB', '12GB', '16GB', '24GB', '32GB+'] },
-    { title: 'Chọn theo RAM', links: ['32GB', '64GB', '128GB', '256GB+'] },
-    { title: 'Chọn theo mức giá', links: ['30–50 triệu', '50–80 triệu', '80–120 triệu', '120–200 triệu', 'Trên 200 triệu'] },
+    {
+      title: 'Xây dựng cấu hình',
+      links: [
+        { label: 'Xây dựng cấu hình PC AI', href: '/pc-builder' },
+        { label: 'Tư vấn cấu hình với AI', href: '/pc-builder' },
+      ],
+    },
+    {
+      title: 'Linh kiện xử lý AI',
+      links: [
+        { label: 'Card đồ họa VRAM cao', href: '/products?category=gpu' },
+        { label: 'CPU đa nhân cao cấp', href: '/products?category=cpu' },
+        { label: 'RAM dung lượng lớn (32GB+)', href: '/products?category=ram' },
+        { label: 'Nguồn công suất lớn (PSU)', href: '/products?category=psu' },
+      ],
+    },
   ] },
   { label: 'Linh kiện máy tính', icon: <WrenchIcon />, groups: [
-    { title: 'Bộ xử lý & nền tảng', links: ['CPU Intel', 'CPU AMD', 'Mainboard Intel', 'Mainboard AMD', 'Chipset mới'] },
-    { title: 'Bộ nhớ & lưu trữ', links: ['RAM DDR4', 'RAM DDR5', 'SSD NVMe', 'SSD SATA', 'HDD'] },
-    { title: 'Đồ họa & nguồn', links: ['NVIDIA GeForce', 'AMD Radeon', 'PSU 80 Plus', 'Case PC', 'Tản nhiệt'] },
-    { title: 'Chọn nhanh linh kiện', links: ['CPU', 'VGA / Card màn hình', 'Mainboard', 'RAM', 'SSD / HDD', 'PSU / Nguồn', 'Case', 'Tản nhiệt'] },
+    {
+      title: 'Xử lý & Bo mạch',
+      links: [
+        { label: 'CPU', href: '/products?category=cpu' },
+        { label: 'Mainboard', href: '/products?category=mainboard' },
+        { label: 'RAM', href: '/products?category=ram' },
+        { label: 'Card đồ họa (VGA/GPU)', href: '/products?category=gpu' },
+      ],
+    },
+    {
+      title: 'Ổ cứng & Lưu trữ',
+      links: [
+        { label: 'SSD', href: '/products?category=ssd' },
+        { label: 'HDD', href: '/products?category=hdd' },
+      ],
+    },
+    {
+      title: 'Nguồn & Vỏ máy',
+      links: [
+        { label: 'Nguồn máy tính (PSU)', href: '/products?category=psu' },
+        { label: 'Vỏ case', href: '/products?category=case' },
+      ],
+    },
+    {
+      title: 'Tản nhiệt & Mạng',
+      links: [
+        { label: 'Tản nhiệt CPU', href: '/products?category=cpu-cooler' },
+        { label: 'Card Wi-Fi', href: '/products?category=wifi-card' },
+      ],
+    },
   ] },
   { label: 'CPU', icon: <ChipIcon />, groups: [
     { title: 'Chọn theo hãng', links: ['Intel', 'AMD'] },
@@ -135,7 +490,7 @@ const megaCategories: MegaCategory[] = [
     { title: 'Chọn theo socket', links: ['AM4', 'AM5', 'LGA 1700', 'LGA 1851'] },
   ] },
   { label: 'Màn hình máy tính', icon: <MonitorIcon />, groups: [
-    { title: 'Chọn theo hãng', links: ['ASUS', 'MSI', 'ViewSonic', 'Samsung', 'LG', 'Gigabyte', 'Dell', 'Cooler Master', 'AOC', 'Acer', 'Lenovo', 'Philips'] },
+    { title: 'Chọn theo hãng', links: ['ASUS', 'MSI', 'ViewSonic', 'Samsung', 'LG', 'Gigabyte', 'Dell', 'Cooler Master', 'AOC', 'Acer', 'Philips'] },
     { title: 'Chọn theo kích thước', links: ['22 inch', '23 inch', '24 inch', '25 inch', '27 inch', '29 inch', '32 inch', '34 inch', '38 inch trở lên'] },
     { title: 'Chọn độ phân giải', links: ['Full HD', '2K QHD', '2.5K', '4K UHD', '5K', '6K'] },
     { title: 'Chọn tần số quét', links: ['60Hz', '75Hz', '100Hz', '120Hz', '144Hz', '165Hz', '180Hz', '240Hz', '360Hz'] },
@@ -188,7 +543,8 @@ const megaCategories: MegaCategory[] = [
 ]
 
 export default function Header() {
-  const { user, token, loading: authLoading, authenticated, logout } = useAuth()
+  const router = useRouter()
+  const { user, loading: authLoading, authenticated, logout, linkGoogle } = useAuth()
   const [categoryOpen, setCategoryOpen] = useState(false)
   const [mobileCategoryOpen, setMobileCategoryOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('PC Gaming')
@@ -221,9 +577,9 @@ export default function Header() {
       return
     }
     const controller = new AbortController()
-    fetch(`${API_BASE_URL}/api/cart/${encodeURIComponent(user.id)}`, {
+    apiFetch(`${API_BASE_URL}/api/cart/${encodeURIComponent(user.id)}`, {
       signal: controller.signal,
-      headers: cartHeaders(token),
+      headers: cartHeaders(),
     })
       .then(async (response) => {
         if (!response.ok) return
@@ -234,7 +590,7 @@ export default function Header() {
         if ((error as Error).name !== 'AbortError') setCartCount(0)
       })
     return () => controller.abort()
-  }, [authLoading, authenticated, cartRefresh, token, user?.id])
+  }, [authLoading, authenticated, cartRefresh, user?.id])
 
   return (
     <header className="sticky top-0 z-50 border-b border-blue-900/20 bg-gradient-to-r from-[#0e5be3] via-[#0d4fc0] to-[#0b3d8f] text-white shadow-[0_10px_28px_rgba(8,45,120,0.18)]">
@@ -249,18 +605,11 @@ export default function Header() {
             <span>Hà Nội</span>
           </div>
 
-          <div className="relative hidden flex-1 max-w-[720px] md:block">
-            <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
-              <SearchIcon />
-            </span>
-            <input
-              aria-label="Tìm kiếm sản phẩm"
-              name="product-search"
-              autoComplete="off"
-              placeholder="Bạn cần tìm gì?"
-              className="w-full rounded-full border border-white/20 bg-white px-4 py-3 pl-11 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm outline-none ring-0 focus:border-white"
-            />
-          </div>
+          <SearchAutocomplete
+            variant="desktop"
+            idPrefix="desktop-search"
+            onNavigate={() => {}}
+          />
 
           <nav className="hidden items-center gap-2 xl:flex">
             {topActions.filter((item) => !['Tài khoản', 'Giỏ hàng'].includes(item.label)).map((item) => (
@@ -277,12 +626,62 @@ export default function Header() {
               <span className="text-base text-white/85"><CartIcon /></span><span>Giỏ hàng</span>
               {authenticated && cartCount > 0 ? <span className="absolute -right-1 -top-2 min-w-5 rounded-full bg-red-500 px-1.5 py-0.5 text-center text-[10px] font-black text-white">{cartCount}</span> : null}
             </Link>
+            {authenticated && user?.role === 'ADMIN' && (
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-500/20 px-3.5 py-2 text-sm font-bold text-amber-200 shadow-sm transition hover:border-amber-300/70 hover:bg-amber-500/30 hover:text-white"
+                title="Vào trang quản lý / Admin"
+              >
+                <ShieldIcon />
+                <span>Quản lý</span>
+              </Link>
+            )}
             {authLoading ? <span className="rounded-full border border-white/15 px-3 py-2 text-sm text-white/70">Đang tải...</span> : authenticated && user ? (
               <div className="relative">
                 <button type="button" onClick={() => setAccountOpen((open) => !open)} aria-expanded={accountOpen} className="inline-flex max-w-48 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-white hover:bg-white/10">
                   <UserIcon /><span className="truncate">{user.name || user.email}</span>
                 </button>
-                {accountOpen ? <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-56 rounded-2xl border border-slate-200 bg-white p-2 text-sm text-slate-700 shadow-xl"><p className="truncate px-3 py-2 text-xs text-slate-500">{user.email}</p><span className="block rounded-lg px-3 py-2 text-slate-400">Tài khoản</span><Link href="/orders" onClick={() => setAccountOpen(false)} className="block rounded-lg px-3 py-2 hover:bg-blue-50 hover:text-blue-700">Đơn hàng của tôi</Link><span className="block rounded-lg px-3 py-2 text-slate-400">Địa chỉ</span><button type="button" onClick={() => { logout(); setAccountOpen(false) }} className="w-full rounded-lg px-3 py-2 text-left font-bold text-red-600 hover:bg-red-50">Đăng xuất</button></div> : null}
+                {accountOpen ? (
+                  <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-56 rounded-2xl border border-slate-200 bg-white p-2 text-sm text-slate-700 shadow-xl">
+                    <p className="truncate px-3 py-2 text-xs text-slate-500">{user.email}</p>
+                    {user.googleLinked ? (
+                      <span className="block px-3 py-1 text-xs font-semibold text-emerald-600">✓ Đã liên kết Google</span>
+                    ) : (
+                      <div className="border-y border-slate-100 py-1.5 px-2">
+                        <p className="px-1 text-[11px] font-semibold text-slate-500 mb-1">Liên kết Google</p>
+                        <GoogleSignInButton
+                          mode="link"
+                          onCredential={async (credential) => {
+                            try {
+                              await linkGoogle(credential)
+                            } catch (linkError) {
+                              alert((linkError as Error).message || 'Không thể liên kết Google.')
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
+                    {user.role === 'ADMIN' && (
+                      <Link
+                        href="/admin"
+                        onClick={() => setAccountOpen(false)}
+                        className="mb-1 flex items-center justify-between rounded-lg bg-amber-50 px-3 py-2 text-sm font-bold text-amber-900 transition hover:bg-amber-100"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <ShieldIcon />
+                          <span>Trang quản lý</span>
+                        </span>
+                        <span className="rounded bg-amber-200 px-1.5 py-0.5 text-[10px] font-black uppercase text-amber-800">
+                          ADMIN
+                        </span>
+                      </Link>
+                    )}
+                    <span className="block rounded-lg px-3 py-2 text-slate-400">Tài khoản</span>
+                    <Link href="/orders" onClick={() => setAccountOpen(false)} className="block rounded-lg px-3 py-2 hover:bg-blue-50 hover:text-blue-700">Đơn hàng của tôi</Link>
+                    <span className="block rounded-lg px-3 py-2 text-slate-400">Địa chỉ</span>
+                    <button type="button" onClick={() => { logout(); setAccountOpen(false) }} className="w-full rounded-lg px-3 py-2 text-left font-bold text-red-600 hover:bg-red-50">Đăng xuất</button>
+                  </div>
+                ) : null}
               </div>
             ) : <><Link href="/login" className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-white hover:bg-white/10"><UserIcon />Đăng nhập</Link><Link href="/register" className="inline-flex items-center rounded-full bg-white px-3 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50">Đăng ký</Link></>}
           </nav>
@@ -295,6 +694,15 @@ export default function Header() {
           >
             <MenuIcon />
           </button>
+        </div>
+
+        {/* Mobile search bar for screens < md */}
+        <div className="pb-3 md:hidden">
+          <SearchAutocomplete
+            variant="mobile"
+            idPrefix="mobile-top-search"
+            onNavigate={() => {}}
+          />
         </div>
       </div>
 
@@ -331,24 +739,99 @@ export default function Header() {
                   <div className="min-w-0 flex-1 overflow-y-auto p-5">
                     {(() => {
                       const category = megaCategories.find((item) => item.label === selectedCategory) || megaCategories[0]
+                      const isPcBuild = category.label.startsWith('PC ') || category.label === 'PC Gaming'
+                      const isLaptop = category.label === 'Laptop'
+
                       return (
                         <>
                           <div className="mb-4 flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                            <h3 className="text-lg font-black text-slate-900">{category.label}</h3>
-                            <Link href={`/products?search=${encodeURIComponent(category.label)}`} className="text-xs font-bold text-blue-700 hover:text-blue-500">Xem tất cả →</Link>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-lg font-black text-slate-900">{category.label}</h3>
+                              {isLaptop ? (
+                                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                                  Đang cập nhật
+                                </span>
+                              ) : isPcBuild ? (
+                                <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+                                  Tự cấu hình
+                                </span>
+                              ) : null}
+                            </div>
+                            {isLaptop ? (
+                              <Link
+                                href="/products"
+                                onClick={() => setCategoryOpen(false)}
+                                className="text-xs font-bold text-blue-700 hover:text-blue-500"
+                              >
+                                Xem linh kiện sẵn có →
+                              </Link>
+                            ) : isPcBuild ? (
+                              <Link
+                                href="/pc-builder"
+                                onClick={() => setCategoryOpen(false)}
+                                className="text-xs font-bold text-blue-700 hover:text-blue-500"
+                              >
+                                Xây dựng cấu hình PC →
+                              </Link>
+                            ) : (
+                              <Link
+                                href={
+                                  getCategorySlugFromLabel(category.label)
+                                    ? `/products?category=${getCategorySlugFromLabel(category.label)}`
+                                    : `/products?search=${encodeURIComponent(category.label)}`
+                                }
+                                onClick={() => setCategoryOpen(false)}
+                                className="text-xs font-bold text-blue-700 hover:text-blue-500"
+                              >
+                                Xem tất cả →
+                              </Link>
+                            )}
                           </div>
-                          <div className="grid gap-x-5 gap-y-5 sm:grid-cols-2 xl:grid-cols-4">
-                            {category.groups.map((group) => (
-                              <div key={group.title}>
-                                <h4 className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600">{group.title}</h4>
-                                <div className="grid grid-cols-2 gap-1">
-                                  {group.links.map((link) => (
-                                    <Link key={link} href={`/products?search=${encodeURIComponent(link)}`} className="rounded-lg px-2 py-1.5 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-blue-700">{link}</Link>
-                                  ))}
-                                </div>
+
+                          {isLaptop ? (
+                            <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-amber-300 bg-amber-50/50 p-8 text-center">
+                              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 shadow-sm">
+                                <LaptopIcon />
                               </div>
-                            ))}
-                          </div>
+                              <h4 className="text-base font-bold text-slate-800">Danh mục Laptop đang được cập nhật</h4>
+                              <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-600">
+                                Cửa hàng hiện chưa kinh doanh các dòng máy tính xách tay (Laptop). Chúng tôi chuyên cung cấp đầy đủ linh kiện PC Gaming, Workstation, màn hình và thiết bị ngoại vi chính hãng.
+                              </p>
+                              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                                <Link
+                                  href="/pc-builder"
+                                  onClick={() => setCategoryOpen(false)}
+                                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                                >
+                                  <DesktopIcon />
+                                  <span>Xây dựng cấu hình PC</span>
+                                </Link>
+                                <Link
+                                  href="/products"
+                                  onClick={() => setCategoryOpen(false)}
+                                  className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-blue-700"
+                                >
+                                  <span>Xem linh kiện sẵn có</span>
+                                </Link>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid gap-x-5 gap-y-5 sm:grid-cols-2 xl:grid-cols-4">
+                              {category.groups.map((group) => (
+                                <div key={group.title}>
+                                  <h4 className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600">{group.title}</h4>
+                                  <div className="grid grid-cols-2 gap-1">
+                                    {group.links.map((link) => {
+                                      const resolved = resolveMegaLink(category.label, group.title, link)
+                                      return (
+                                        <Link key={resolved.label} href={resolved.href} onClick={() => setCategoryOpen(false)} className="rounded-lg px-2 py-1.5 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-blue-700">{resolved.label}</Link>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </>
                       )
                     })()}
@@ -369,9 +852,9 @@ export default function Header() {
                       }
                     }}
                     onClick={(event) => {
-                      if (item.label === 'Linh kiện PC' || item.label === 'Laptop') {
+                      if (item.label === 'Laptop') {
                         event.preventDefault()
-                        setSelectedCategory(item.label === 'Linh kiện PC' ? 'Linh kiện máy tính' : 'Laptop')
+                        setSelectedCategory('Laptop')
                         setCategoryOpen(true)
                       }
                     }}
@@ -379,57 +862,52 @@ export default function Header() {
                   >
                     <span className="text-base text-white/85">{item.icon}</span>
                     <span>{item.label}</span>
-                    {item.label !== 'Tra cứu bảo hành' && <ChevronDownIcon />}
+                    {item.label !== 'Xây dựng PC' && item.label !== 'Tất cả sản phẩm' && <ChevronDownIcon />}
                   </Link>
 
-                  {item.label !== 'Tra cứu bảo hành' && (
-                    <div className="invisible absolute left-0 top-full z-40 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 opacity-0 shadow-[0_18px_38px_rgba(15,23,42,0.18)] transition group-hover:visible group-hover:opacity-100">
-                      {item.label === 'PC' && (
+                  {(item.label === 'Linh kiện máy tính' || item.label === 'Màn hình' || item.label === 'Phím chuột ghế gear' || item.label === 'Thiết bị văn phòng') && (
+                    <div className="invisible absolute left-0 top-full z-40 mt-2 w-64 rounded-2xl border border-slate-200 bg-white p-2 opacity-0 shadow-[0_18px_38px_rgba(15,23,42,0.18)] transition group-hover:visible group-hover:opacity-100">
+                      {item.label === 'Linh kiện máy tính' && (
                         <ul className="space-y-1">
-                          {['Gaming', 'Workstation', 'Bộ máy tiêu chuẩn'].map((sub) => (
-                            <li key={sub}><Link href="#" className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">{sub}</Link></li>
-                          ))}
-                        </ul>
-                      )}
-                      {item.label === 'Laptop' && (
-                        <ul className="space-y-1">
-                          {['Gaming', 'Văn phòng', 'Đồ họa sáng tạo', 'Workstation'].map((sub) => (
-                            <li key={sub}><Link href="#" className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">{sub}</Link></li>
-                          ))}
-                        </ul>
-                      )}
-                      {item.label === 'Mini PC' && (
-                        <ul className="space-y-1">
-                          {['Văn phòng', 'AI', 'Rạp phim tại nhà', 'Nhỏ gọn'].map((sub) => (
-                            <li key={sub}><Link href="#" className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">{sub}</Link></li>
-                          ))}
-                        </ul>
-                      )}
-                      {item.label === 'PC AI' && (
-                        <ul className="space-y-1">
-                          {['RTX Workstation', 'NPU AI', 'Creator', 'Server AI'].map((sub) => (
-                            <li key={sub}><Link href="#" className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">{sub}</Link></li>
-                          ))}
-                        </ul>
-                      )}
-                      {item.label === 'Linh kiện PC' && (
-                        <ul className="space-y-1">
-                          {['CPU', 'Mainboard', 'RAM', 'VGA', 'PSU', 'Case'].map((sub) => (
-                            <li key={sub}><Link href="#" className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">{sub}</Link></li>
+                          {pcComponentLinks.map((sub) => (
+                            <li key={sub.label}>
+                              <Link href={sub.href} className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
+                                {sub.label}
+                              </Link>
+                            </li>
                           ))}
                         </ul>
                       )}
                       {item.label === 'Màn hình' && (
                         <ul className="space-y-1">
-                          {['Gaming', 'Office', 'Creator', 'Ultrawide'].map((sub) => (
-                            <li key={sub}><Link href="#" className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">{sub}</Link></li>
+                          {monitorSublinks.map((sub) => (
+                            <li key={sub.label}>
+                              <Link href={sub.href} className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
+                                {sub.label}
+                              </Link>
+                            </li>
                           ))}
                         </ul>
                       )}
                       {item.label === 'Phím chuột ghế gear' && (
                         <ul className="space-y-1">
-                          {['Bàn phím', 'Chuột', 'Tai nghe', 'Ghế'].map((sub) => (
-                            <li key={sub}><Link href="#" className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">{sub}</Link></li>
+                          {gearLinks.map((sub) => (
+                            <li key={sub.label}>
+                              <Link href={sub.href} className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
+                                {sub.label}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {item.label === 'Thiết bị văn phòng' && (
+                        <ul className="space-y-1">
+                          {officeLinks.map((sub) => (
+                            <li key={sub.label}>
+                              <Link href={sub.href} className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
+                                {sub.label}
+                              </Link>
+                            </li>
                           ))}
                         </ul>
                       )}
@@ -454,6 +932,14 @@ export default function Header() {
               </button>
             </div>
 
+            <div className="mb-4">
+              <SearchAutocomplete
+                variant="drawer"
+                idPrefix="drawer-search"
+                onNavigate={() => setMobileOpen(false)}
+              />
+            </div>
+
             <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50 p-3">
               <button
                 type="button"
@@ -475,31 +961,61 @@ export default function Header() {
                         <span className="ml-auto text-slate-400 transition group-open:rotate-180"><ChevronDownIcon /></span>
                       </summary>
                       <div className="space-y-3 border-t border-slate-100 px-3 py-3">
-                        {category.groups.map((group) => (
-                          <div key={group.title}>
-                            <p className="mb-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">{group.title}</p>
-                            <div className="grid grid-cols-2 gap-1">
-                              {group.links.map((link) => (
-                                <Link key={link} href={`/products?search=${encodeURIComponent(link)}`} onClick={() => setMobileOpen(false)} className="rounded-md px-2 py-1.5 text-xs text-slate-600 hover:bg-blue-50 hover:text-blue-700">{link}</Link>
-                              ))}
+                        {category.label === 'Laptop' ? (
+                          <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/70 p-4 text-center">
+                            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                              <LaptopIcon />
                             </div>
-
-                            <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-3">
-                              {authenticated && user ? (
-                                <>
-                                  <p className="truncate text-sm font-black text-slate-900">{user.name || user.email}</p>
-                                  <p className="truncate text-xs text-slate-500">{user.email}</p>
-                                  <button type="button" onClick={() => { logout(); setMobileOpen(false) }} className="mt-3 w-full rounded-lg bg-red-50 px-3 py-2 text-left text-sm font-bold text-red-600">Đăng xuất</button>
-                                </>
-                              ) : (
-                                <div className="flex gap-2">
-                                  <Link href="/login" onClick={() => setMobileOpen(false)} className="flex-1 rounded-lg bg-blue-700 px-3 py-2 text-center text-sm font-bold text-white">Đăng nhập</Link>
-                                  <Link href="/register" onClick={() => setMobileOpen(false)} className="flex-1 rounded-lg border border-blue-200 px-3 py-2 text-center text-sm font-bold text-blue-700">Đăng ký</Link>
-                                </div>
-                              )}
+                            <p className="text-sm font-bold text-slate-800">Danh mục Laptop đang được cập nhật</p>
+                            <p className="mt-1 text-xs text-slate-600">
+                              Cửa hàng hiện chưa kinh doanh sản phẩm Laptop. Quý khách vui lòng tham khảo linh kiện và cấu hình PC.
+                            </p>
+                            <div className="mt-3 flex flex-col gap-2">
+                              <Link
+                                href="/pc-builder"
+                                onClick={() => setMobileOpen(false)}
+                                className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
+                              >
+                                Xây dựng cấu hình PC →
+                              </Link>
+                              <Link
+                                href="/products"
+                                onClick={() => setMobileOpen(false)}
+                                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                              >
+                                Xem tất cả sản phẩm sẵn có
+                              </Link>
                             </div>
                           </div>
-                        ))}
+                        ) : (
+                          <>
+                            {(category.label === 'PC Gaming' || category.label.startsWith('PC ')) && (
+                              <div className="mb-2 flex items-center justify-between rounded-lg bg-blue-50 p-2 text-xs">
+                                <span className="font-semibold text-blue-900">Tự cấu hình PC</span>
+                                <Link
+                                  href="/pc-builder"
+                                  onClick={() => setMobileOpen(false)}
+                                  className="font-bold text-blue-700 hover:underline"
+                                >
+                                  Mở PC Builder →
+                                </Link>
+                              </div>
+                            )}
+                            {category.groups.map((group) => (
+                              <div key={group.title}>
+                                <p className="mb-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">{group.title}</p>
+                                <div className="grid grid-cols-2 gap-1">
+                                  {group.links.map((link) => {
+                                    const resolved = resolveMegaLink(category.label, group.title, link)
+                                    return (
+                                      <Link key={resolved.label} href={resolved.href} onClick={() => setMobileOpen(false)} className="rounded-md px-2 py-1.5 text-xs text-slate-600 hover:bg-blue-50 hover:text-blue-700">{resolved.label}</Link>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </>
+                        )}
                       </div>
                     </details>
                   ))}
@@ -508,17 +1024,168 @@ export default function Header() {
             </div>
 
             <div className="space-y-2">
-              {mainNavigation.map((item) => (
-                <div key={item.label} className="rounded-xl border border-slate-200 bg-slate-50">
-                  <Link href={item.href} onClick={() => setMobileOpen(false)} className="flex items-center justify-between gap-3 px-3 py-3 text-sm font-semibold text-slate-800">
-                    <span className="flex items-center gap-3">
-                      <span className="text-blue-600">{item.icon}</span>
-                      {item.label}
-                    </span>
-                    {item.label !== 'Tra cứu bảo hành' && <ChevronDownIcon />}
-                  </Link>
+              {mainNavigation.map((item) => {
+                if (item.label === 'Linh kiện máy tính') {
+                  return (
+                    <details key={item.label} className="group rounded-xl border border-slate-200 bg-slate-50">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-semibold text-slate-800">
+                        <span className="flex items-center gap-3">
+                          <span className="text-blue-600">{item.icon}</span>
+                          {item.label}
+                        </span>
+                        <span className="text-slate-400 transition group-open:rotate-180"><ChevronDownIcon /></span>
+                      </summary>
+                      <div className="space-y-1 border-t border-slate-200 bg-white p-2">
+                        {pcComponentLinks.map((sub) => (
+                          <Link
+                            key={sub.label}
+                            href={sub.href}
+                            onClick={() => setMobileOpen(false)}
+                            className="block rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-700"
+                          >
+                            {sub.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </details>
+                  )
+                }
+                if (item.label === 'Màn hình') {
+                  return (
+                    <details key={item.label} className="group rounded-xl border border-slate-200 bg-slate-50">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-semibold text-slate-800">
+                        <span className="flex items-center gap-3">
+                          <span className="text-blue-600">{item.icon}</span>
+                          {item.label}
+                        </span>
+                        <span className="text-slate-400 transition group-open:rotate-180"><ChevronDownIcon /></span>
+                      </summary>
+                      <div className="space-y-1 border-t border-slate-200 bg-white p-2">
+                        {monitorSublinks.map((sub) => (
+                          <Link
+                            key={sub.label}
+                            href={sub.href}
+                            onClick={() => setMobileOpen(false)}
+                            className="block rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-700"
+                          >
+                            {sub.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </details>
+                  )
+                }
+                if (item.label === 'Phím chuột ghế gear') {
+                  return (
+                    <details key={item.label} className="group rounded-xl border border-slate-200 bg-slate-50">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-semibold text-slate-800">
+                        <span className="flex items-center gap-3">
+                          <span className="text-blue-600">{item.icon}</span>
+                          {item.label}
+                        </span>
+                        <span className="text-slate-400 transition group-open:rotate-180"><ChevronDownIcon /></span>
+                      </summary>
+                      <div className="space-y-1 border-t border-slate-200 bg-white p-2">
+                        {gearLinks.map((sub) => (
+                          <Link
+                            key={sub.label}
+                            href={sub.href}
+                            onClick={() => setMobileOpen(false)}
+                            className="block rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-700"
+                          >
+                            {sub.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </details>
+                  )
+                }
+                if (item.label === 'Thiết bị văn phòng') {
+                  return (
+                    <details key={item.label} className="group rounded-xl border border-slate-200 bg-slate-50">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-semibold text-slate-800">
+                        <span className="flex items-center gap-3">
+                          <span className="text-blue-600">{item.icon}</span>
+                          {item.label}
+                        </span>
+                        <span className="text-slate-400 transition group-open:rotate-180"><ChevronDownIcon /></span>
+                      </summary>
+                      <div className="space-y-1 border-t border-slate-200 bg-white p-2">
+                        {officeLinks.map((sub) => (
+                          <Link
+                            key={sub.label}
+                            href={sub.href}
+                            onClick={() => setMobileOpen(false)}
+                            className="block rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-700"
+                          >
+                            {sub.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </details>
+                  )
+                }
+                return (
+                  <div key={item.label} className="rounded-xl border border-slate-200 bg-slate-50">
+                    <Link href={item.href} onClick={() => setMobileOpen(false)} className="flex items-center justify-between gap-3 px-3 py-3 text-sm font-semibold text-slate-800">
+                      <span className="flex items-center gap-3">
+                        <span className="text-blue-600">{item.icon}</span>
+                        {item.label}
+                      </span>
+                      {item.label !== 'Tra cứu bảo hành' && <ChevronDownIcon />}
+                    </Link>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
+              {authenticated && user ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="truncate text-sm font-black text-slate-900">{user.name || user.email}</p>
+                    {user.role === 'ADMIN' && (
+                      <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase text-amber-800 border border-amber-200">
+                        ADMIN
+                      </span>
+                    )}
+                  </div>
+                  <p className="truncate text-xs text-slate-500">{user.email}</p>
+                  {user.googleLinked ? (
+                    <p className="mt-1 text-xs font-semibold text-emerald-600">✓ Đã liên kết Google</p>
+                  ) : (
+                    <div className="mt-2 border-t border-slate-100 pt-2">
+                      <p className="mb-1 text-[11px] font-semibold text-slate-500">Liên kết tài khoản Google:</p>
+                      <GoogleSignInButton
+                        mode="link"
+                        onCredential={async (credential) => {
+                          try {
+                            await linkGoogle(credential)
+                          } catch (linkError) {
+                            alert((linkError as Error).message || 'Không thể liên kết Google.')
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
+                  {user.role === 'ADMIN' && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setMobileOpen(false)}
+                      className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-3 py-2.5 text-center text-sm font-bold text-white shadow-sm transition hover:bg-amber-600"
+                    >
+                      <ShieldIcon />
+                      <span>Vào trang Quản lý (Admin)</span>
+                    </Link>
+                  )}
+                  <button type="button" onClick={() => { logout(); setMobileOpen(false) }} className="mt-2.5 w-full rounded-lg bg-red-50 px-3 py-2 text-left text-sm font-bold text-red-600">Đăng xuất</button>
+                </>
+              ) : (
+                <div className="flex gap-2">
+                  <Link href="/login" onClick={() => setMobileOpen(false)} className="flex-1 rounded-lg bg-blue-700 px-3 py-2 text-center text-sm font-bold text-white">Đăng nhập</Link>
+                  <Link href="/register" onClick={() => setMobileOpen(false)} className="flex-1 rounded-lg border border-blue-200 px-3 py-2 text-center text-sm font-bold text-blue-700">Đăng ký</Link>
                 </div>
-              ))}
+              )}
             </div>
           </aside>
         </div>

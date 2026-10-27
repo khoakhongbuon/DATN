@@ -55,9 +55,9 @@ export async function addItem(userId: string, productId: unknown, quantity: unkn
 
   const product = await prisma.product.findUnique({
     where: { id: productId },
-    select: { id: true, stock: true },
+    select: { id: true, stock: true, isActive: true },
   })
-  if (!product) notFound('Product not found')
+  if (!product || !product.isActive) notFound('Product not found')
 
   const cart = await getOrCreateCart(userId)
   const existing = await prisma.cartItem.findUnique({
