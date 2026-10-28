@@ -49,6 +49,8 @@ type ModelBuildRequirements = {
   budgetVnd: number
   useCase: string
   useCaseDetail: string
+  requiredCpuModel: string
+  requiredGpuModel: string
   prioritizedRoles: string[]
   requestedRoles: string[]
   excludedRoles: string[]
@@ -61,6 +63,8 @@ const emptyBuildRequirements: ModelBuildRequirements = {
   budgetVnd: 0,
   useCase: 'custom',
   useCaseDetail: '',
+  requiredCpuModel: '',
+  requiredGpuModel: '',
   prioritizedRoles: [],
   requestedRoles: [],
   excludedRoles: [],

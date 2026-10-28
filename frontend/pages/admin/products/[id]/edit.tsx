@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { AdminLayout } from '../../../../components/admin/AdminLayout'
 import { useAuth } from '../../../../lib/auth'
-import { apiFetch } from '../../../../lib/cart'
+import { apiFetch, parseJsonResponse } from '../../../../lib/cart'
 
 import { ProductImagePicker, type ProductImageItem } from '../../../../components/admin/ProductImagePicker'
 
@@ -115,7 +115,8 @@ const normalizeProductType = (value?: string | null) => {
 
 export default function EditProductPage() {
   const router = useRouter()
-  const { productId } = router.query
+  const rawId = router.query.id ?? router.query.productId
+  const productId = typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : undefined
   const { user, loading, authenticated } = useAuth()
 
   const [product, setProduct] = useState<Product | null>(null)
@@ -136,7 +137,9 @@ export default function EditProductPage() {
   })
   const [specForm, setSpecForm] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
+  const [loadingProduct, setLoadingProduct] = useState(true)
   const [submitError, setSubmitError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
   const [loadError, setLoadError] = useState('')
   const [refreshNonce, setRefreshNonce] = useState(0)
 
@@ -184,29 +187,40 @@ export default function EditProductPage() {
   }, [authenticated, loading, router])
 
   useEffect(() => {
-    if (!productId || typeof productId !== 'string' || !authenticated || user?.role !== 'ADMIN') return
+    if (!router.isReady) return
+    if (!productId || typeof productId !== 'string' || !authenticated || user?.role !== 'ADMIN') {
+      if (authenticated && user?.role === 'ADMIN' && !productId) {
+        setLoadingProduct(false)
+        setLoadError('Thiếu mã sản phẩm trong đường dẫn.')
+      }
+      return
+    }
 
     const controller = new AbortController()
     let active = true
 
     const loadData = async () => {
+      setLoadingProduct(true)
       setLoadError('')
       try {
         const [productResponse, categoriesResponse, brandsResponse, imageResponse, specResponse] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/products/${productId}`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
-          fetch(`${API_BASE_URL}/api/categories`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
-          fetch(`${API_BASE_URL}/api/brands`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
-          fetch(`${API_BASE_URL}/api/products/${productId}/images`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
-          fetch(`${API_BASE_URL}/api/products/${productId}/specifications`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
+          apiFetch(`${API_BASE_URL}/api/products/${encodeURIComponent(productId)}`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
+          apiFetch(`${API_BASE_URL}/api/categories`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
+          apiFetch(`${API_BASE_URL}/api/brands`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
+          apiFetch(`${API_BASE_URL}/api/products/${encodeURIComponent(productId)}/images`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
+          apiFetch(`${API_BASE_URL}/api/products/${encodeURIComponent(productId)}/specifications`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
         ])
 
-        if (!productResponse.ok) throw new Error('Sản phẩm không tồn tại hoặc không thể tải.')
+        if (!productResponse.ok) {
+          if (productResponse.status === 404) throw new Error('Sản phẩm không tồn tại.')
+          throw new Error('Không thể tải thông tin sản phẩm.')
+        }
 
-        const productPayload = await productResponse.json() as { data?: Product }
-        const categoryPayload = await categoriesResponse.json() as { data?: Category[] }
-        const brandPayload = await brandsResponse.json() as { data?: Brand[] }
-        const imagePayload = await imageResponse.json() as { data?: ImageRecord[] }
-        const specPayload = await specResponse.json() as { data?: SpecificationRecord[] }
+        const productPayload = await parseJsonResponse<{ data?: Product }>(productResponse, 'Không thể tải thông tin sản phẩm.')
+        const categoryPayload = await parseJsonResponse<{ data?: Category[] }>(categoriesResponse, 'Không thể tải danh mục.')
+        const brandPayload = await parseJsonResponse<{ data?: Brand[] }>(brandsResponse, 'Không thể tải thương hiệu.')
+        const imagePayload = await parseJsonResponse<{ data?: ImageRecord[] }>(imageResponse, 'Không thể tải hình ảnh.')
+        const specPayload = await parseJsonResponse<{ data?: SpecificationRecord[] }>(specResponse, 'Không thể tải thông số kỹ thuật.')
 
         if (!active) return
 
@@ -245,6 +259,8 @@ export default function EditProductPage() {
         }
       } catch (error) {
         if ((error as Error).name !== 'AbortError' && active) setLoadError((error as Error).message || 'Không thể tải dữ liệu sản phẩm.')
+      } finally {
+        if (active) setLoadingProduct(false)
       }
     }
 
@@ -253,7 +269,7 @@ export default function EditProductPage() {
       active = false
       controller.abort()
     }
-  }, [authenticated, productId, refreshNonce, user, productTypeKey])
+  }, [authenticated, productId, refreshNonce, user, productTypeKey, router.isReady])
 
   const handleProductSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -292,8 +308,11 @@ export default function EditProductPage() {
         }),
       })
 
-      const payload = await response.json() as { success?: boolean; message?: string; error?: string }
+      const payload = await parseJsonResponse<{ success?: boolean; message?: string; error?: string }>(response, 'Cập nhật sản phẩm thất bại.')
       if (!response.ok || !payload.success) throw new Error(responseMessage(payload, 'Cập nhật sản phẩm thất bại.'))
+
+      setSuccessMessage('Cập nhật sản phẩm thành công!')
+      setTimeout(() => setSuccessMessage(''), 4000)
 
       setProduct((current) => {
         if (!current) return current
@@ -417,12 +436,13 @@ export default function EditProductPage() {
     }
   }
 
-  if (loading) {
+  if (loading || (loadingProduct && !product && !loadError)) {
     return (
-      <AdminLayout title="Chỉnh sửa sản phẩm" subtitle="Đang xác thực quyền admin...">
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="h-12 animate-pulse rounded-xl bg-slate-100" />
-          <div className="h-28 animate-pulse rounded-xl bg-slate-100" />
+      <AdminLayout title="Chỉnh sửa sản phẩm" subtitle="Đang tải dữ liệu sản phẩm...">
+        <div className="space-y-4">
+          <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
+          <div className="h-32 animate-pulse rounded-2xl bg-slate-100" />
+          <div className="h-64 animate-pulse rounded-2xl bg-slate-100" />
         </div>
       </AdminLayout>
     )
@@ -445,7 +465,12 @@ export default function EditProductPage() {
     return (
       <AdminLayout title="Sản phẩm" subtitle="Không thể tải dữ liệu sản phẩm.">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          {loadError ? <p className="text-red-700">{loadError}</p> : <p className="text-slate-600">Không tìm thấy sản phẩm.</p>}
+          {loadError ? <p className="text-red-700 font-semibold">{loadError}</p> : <p className="text-slate-600">Không tìm thấy sản phẩm.</p>}
+          <div className="mt-4">
+            <Link href="/admin/products" className="inline-block rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800">
+              ← Quay lại danh sách sản phẩm
+            </Link>
+          </div>
         </div>
       </AdminLayout>
     )
@@ -454,6 +479,12 @@ export default function EditProductPage() {
   return (
     <AdminLayout title="Chỉnh sửa sản phẩm" subtitle="Cập nhật thông tin, hình ảnh và thông số kỹ thuật của sản phẩm.">
       <div className="space-y-6">
+        {successMessage ? (
+          <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 shadow-sm">
+            <span>✓ {successMessage}</span>
+            <button type="button" onClick={() => setSuccessMessage('')} className="font-bold text-emerald-700 hover:text-emerald-900">✕</button>
+          </div>
+        ) : null}
         {submitError ? <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{submitError}</div> : null}
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">

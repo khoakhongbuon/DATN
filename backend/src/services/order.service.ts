@@ -14,6 +14,9 @@ function createOrderCode() {
 }
 
 const orderDetailInclude = {
+  user: {
+    select: { id: true, name: true, email: true, phone: true },
+  },
   items: {
     include: {
       product: {
@@ -30,6 +33,7 @@ const orderDetailInclude = {
       },
     },
   },
+  payments: true,
 } satisfies Prisma.OrderInclude
 
 async function getUserAddress(transaction: Prisma.TransactionClient, userId: string, addressId: unknown) {

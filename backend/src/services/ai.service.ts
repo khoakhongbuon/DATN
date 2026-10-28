@@ -62,6 +62,8 @@ type ModelBuildRequirements = {
   budgetVnd: number
   useCase: 'gaming' | 'office' | 'study' | 'programming' | 'graphics' | 'custom'
   useCaseDetail: string
+  requiredCpuModel?: string
+  requiredGpuModel?: string
   prioritizedRoles: BuildRole[]
   requestedRoles: BuildRole[]
   excludedRoles: BuildRole[]
@@ -109,6 +111,8 @@ export const AI_RESPONSE_SCHEMA = {
         budgetVnd: { type: 'integer', minimum: 0, format: 'int64' },
         useCase: { type: 'string', format: 'enum', enum: BUILD_USE_CASES },
         useCaseDetail: { type: 'string', maxLength: '120' },
+        requiredCpuModel: { type: 'string', maxLength: '120' },
+        requiredGpuModel: { type: 'string', maxLength: '120' },
         prioritizedRoles: {
           type: 'array',
           maxItems: BUILD_ROLES.length,
@@ -143,6 +147,8 @@ export const AI_RESPONSE_SCHEMA = {
         'budgetVnd',
         'useCase',
         'useCaseDetail',
+        'requiredCpuModel',
+        'requiredGpuModel',
         'prioritizedRoles',
         'requestedRoles',
         'excludedRoles',
@@ -283,6 +289,13 @@ function parseStructuredAiResponse(rawContent: string): StructuredAiResponse | u
     return undefined
   }
 
+  if (value.requiredCpuModel !== undefined && (typeof value.requiredCpuModel !== 'string' || value.requiredCpuModel.length > 120)) {
+    return undefined
+  }
+  if (value.requiredGpuModel !== undefined && (typeof value.requiredGpuModel !== 'string' || value.requiredGpuModel.length > 120)) {
+    return undefined
+  }
+
   const ownedComponents: OwnedBuildComponent[] = []
   for (const component of value.ownedComponents) {
     if (
@@ -305,6 +318,13 @@ function parseStructuredAiResponse(rawContent: string): StructuredAiResponse | u
     return undefined
   }
 
+  const requiredCpuModel = typeof value.requiredCpuModel === 'string' && value.requiredCpuModel.trim().length > 0
+    ? value.requiredCpuModel.trim()
+    : undefined
+  const requiredGpuModel = typeof value.requiredGpuModel === 'string' && value.requiredGpuModel.trim().length > 0
+    ? value.requiredGpuModel.trim()
+    : undefined
+
   return {
     intent: parsed.intent,
     message: parsed.message.trim(),
@@ -314,6 +334,8 @@ function parseStructuredAiResponse(rawContent: string): StructuredAiResponse | u
       budgetVnd: value.budgetVnd,
       useCase: BUILD_USE_CASES.find((useCase) => useCase === value.useCase) ?? 'custom',
       useCaseDetail: value.useCaseDetail.trim(),
+      requiredCpuModel,
+      requiredGpuModel,
       prioritizedRoles,
       requestedRoles,
       excludedRoles,
@@ -321,6 +343,26 @@ function parseStructuredAiResponse(rawContent: string): StructuredAiResponse | u
       clarificationQuestion: value.clarificationQuestion.trim(),
     },
   }
+}
+
+export function extractRequiredCpuModel(text: string): string | undefined {
+  const patterns = [
+    /\b(?:AMD\s+)?Ryzen\s+[3579]\s+\d{4}[A-Za-z0-9]*/i,
+    /\bRyzen\s+\d{4}[A-Za-z0-9]*/i,
+    /\b(?:Intel\s+)?(?:Core\s+)?i[3579]-?\d{4,5}[A-Za-z0-9]*/i,
+    /\b[1-9]\d{3}[Xx]\b/,
+  ]
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    if (match) return match[0].trim()
+  }
+  return undefined
+}
+
+export function extractRequiredGpuModel(text: string): string | undefined {
+  const pattern = /\b(?:RTX\s*\d{4}(?:\s*Ti|\s*SUPER)?|GTX\s*\d{4}(?:\s*Ti)?|RX\s*\d{4}(?:\s*XT)?)\b/i
+  const match = text.match(pattern)
+  return match ? match[0].trim() : undefined
 }
 
 function formatChatHistory(history: ChatHistoryEntry[]): string {
@@ -776,7 +818,7 @@ Trả lời lịch sự, thực tế và hoàn toàn bằng tiếng Việt.
 Trả duy nhất JSON theo response schema, gồm intent, message, recommendedProductIds và buildRequirements.
 
 1. Phân loại yêu cầu lắp/mua cấu hình máy tính là intent "pc_build"; câu hỏi sản phẩm, bảo hành và cách dùng thông thường là "general".
-2. Với "pc_build", chỉ trích xuất ngân sách VND, mục đích, linh kiện ưu tiên/yêu cầu/đã có và thiết bị khách chủ động loại trừ. Không chọn sản phẩm, trả ID, giá, tồn kho, tổng tiền hoặc khẳng định tương thích; recommendedProductIds phải là [].
+2. Với "pc_build", chỉ trích xuất ngân sách VND, mục đích, requiredCpuModel (nếu người dùng chỉ định rõ tên CPU cụ thể như Ryzen 5 9600X, i5-13400F, v.v., ngược lại để rỗng ""), requiredGpuModel (nếu có model card đồ họa cụ thể như RTX 4060, RTX 4070, ngược lại để rỗng ""), linh kiện ưu tiên/yêu cầu/đã có và thiết bị khách chủ động loại trừ. Không chọn sản phẩm, trả ID, giá, tồn kho, tổng tiền hoặc khẳng định tương thích; recommendedProductIds phải là [].
 3. Nếu khách không nêu ngân sách, đặt hasBudget=false, budgetVnd=0 và hỏi ngắn về ngân sách. Không hỏi lại mục đích/linh kiện mà lịch sử cho biết rõ.
 4. Chuẩn hóa "15 triệu" thành 15000000 VND; chỉ đặt hasBudget=true khi ngân sách được nêu rõ, không đoán.
 5. Chỉ thêm MONITOR, KEYBOARD, MOUSE vào excludedRoles khi khách nói rõ không cần mua; chỉ thêm vào ownedComponents khi khách nói đã có. Backend mặc định bao gồm các thiết bị này.
@@ -857,11 +899,18 @@ Trả duy nhất JSON theo response schema, gồm intent, message, recommendedPr
       }
     }
 
+    const deterministicCpu = extractRequiredCpuModel(message)
+    const deterministicGpu = extractRequiredGpuModel(message)
+    const resolvedCpu = parsedRequirements.requiredCpuModel || deterministicCpu
+    const resolvedGpu = parsedRequirements.requiredGpuModel || deterministicGpu
+
     const buildRequirements: BuildRequirements = {
       budgetVnd: parsedRequirements.budgetVnd,
       useCase: parsedRequirements.useCase === 'custom'
         ? parsedRequirements.useCaseDetail || 'custom'
         : parsedRequirements.useCase,
+      ...(resolvedCpu ? { requiredCpuModel: resolvedCpu } : {}),
+      ...(resolvedGpu ? { requiredGpuModel: resolvedGpu } : {}),
       prioritizedRoles: parsedRequirements.prioritizedRoles,
       requestedRoles: parsedRequirements.requestedRoles,
       excludedRoles: parsedRequirements.excludedRoles,
@@ -884,8 +933,15 @@ Trả duy nhất JSON theo response schema, gồm intent, message, recommendedPr
       return { message: build.clarificationQuestion, products: [], build }
     }
 
-    const explanationPrompt = `Bạn là trợ lý AI của TK PC Store. Giải thích ngắn gọn bằng tiếng Việt lý do chọn cấu hình và các đánh đổi.
-Chỉ dùng dữ liệu trong VERIFIED_BUILD. Không thêm sản phẩm, thông số, giá, tổng tiền, khuyến mãi hoặc khẳng định tương thích ngoài dữ liệu đó. Không lặp lại con số tiền; giao diện hiển thị số backend đã tính. Nếu trạng thái là over_budget, nói rõ đây chưa phải cấu hình đạt ngân sách. Nếu trạng thái là insufficient_catalog hoặc no_compatible_build, giải thích phần thiếu/chưa xác minh và không tự tạo phương án thay thế.
+    const explanationPrompt = `Bạn là trợ lý AI chuyên nghiệp của TK PC Store. Giải thích chi tiết, minh bạch bằng tiếng Việt cấu hình đã được kiểm tra (VERIFIED_BUILD).
+Quy tắc:
+1. Phân biệt rõ từng linh kiện: CPU, GPU, Mainboard, RAM, Ổ cứng (SSD), Nguồn (PSU), Vỏ máy (Case), Tản nhiệt (Cooler) và các phụ kiện.
+2. Nêu rõ model và giải thích lý do lựa chọn từng linh kiện chính (đặc biệt là CPU và GPU).
+3. Nếu người dùng chỉ định model CPU (như Ryzen 5 9600X), xác nhận rằng cấu hình đã đáp ứng đúng model đó nếu có trong danh sách linh kiện.
+4. Trình bày tổng tiền và số tiền còn dư theo đúng số liệu backend đã tính (totalPayable, remainingBudget); không tự cộng trừ sai lệch.
+5. Nếu ngân sách lớn (ví dụ 50 triệu) và còn dư đáng kể, giải thích rõ lý do (cấu hình đã tối ưu hiệu năng cao cho nhu cầu) và đề xuất phương án nâng cấp thêm (nâng GPU cao hơn, RAM 64GB, mở rộng SSD).
+6. Nếu trạng thái là over_budget, giải thích rõ cấu hình hiện tại vượt ngân sách bao nhiêu (deficit) và chi phí tối thiểu từ catalog thực tế để chạy được CPU/linh kiện đó.
+7. Nếu trạng thái là insufficient_catalog hoặc no_compatible_build, chỉ ra linh kiện còn thiếu hoặc không tương thích, chỉ đề xuất linh kiện thay thế dưới nhãn "phương án thay thế", không tự bịa thông số.
 Trả JSON theo response schema, dùng intent "general", recommendedProductIds [], và buildRequirements mặc định.`
     const explanation = await requestCompletion([
       { role: 'system', content: explanationPrompt },

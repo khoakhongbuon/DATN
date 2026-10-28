@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "prisma generate && tsc",
-    "test": "npm run build && node --test dist/controllers/auth.controller.test.js dist/middlewares/auth.middleware.test.js dist/services/auth.service.test.js dist/services/google-auth.service.test.js dist/services/ai.service.test.js dist/services/pc-builder.service.test.js dist/services/pc-build.service.test.js dist/services/product-search.test.js",
+    "test": "npm run build && node --test dist/controllers/auth.controller.test.js dist/middlewares/auth.middleware.test.js dist/services/auth.service.test.js dist/services/google-auth.service.test.js dist/services/ai.service.test.js dist/services/pc-builder.service.test.js dist/services/pc-build.service.test.js dist/services/product-search.test.js dist/services/address-autocomplete.service.test.js dist/services/momo.service.test.js dist/services/order.service.test.js dist/services/product.service.test.js",
     "start": "node dist/index.js",
     "prisma:format": "prisma format",
     "prisma:validate": "prisma validate",

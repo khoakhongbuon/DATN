@@ -9,6 +9,7 @@ import productSpecificationRoutes from './routes/product-specification.routes'
 import cartRoutes from './routes/cart.routes'
 import authRoutes from './routes/auth.routes'
 import addressRoutes from './routes/address.routes'
+import addressAutocompleteRoutes from './routes/address-autocomplete.routes'
 import orderRoutes from './routes/order.routes'
 import paymentRoutes from './routes/payment.routes'
 import paymentWebhookRoutes from './routes/payment-webhook.routes'
@@ -78,6 +79,7 @@ app.use('/api/products/:productId/specifications', productSpecificationRoutes)
 app.use('/api/cart/:userId', cartRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/users/:userId/addresses', addressRoutes)
+app.use('/api/addresses', addressAutocompleteRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/orders/:orderId/payment', paymentRoutes)
 app.use('/api/payments', paymentWebhookRoutes)

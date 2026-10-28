@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { API_BASE_URL, Cart, apiFetch, cartHeaders, productPrice } from '../lib/cart'
+import AddressAutocomplete, { SelectedAddressData } from '../components/AddressAutocomplete'
 
 type Address = {
   id: string
@@ -596,6 +597,18 @@ function AddressForm({
     <form onSubmit={onSubmit} className="mt-5 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
       <h3 className="text-sm font-bold">Thêm địa chỉ giao hàng mới</h3>
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      <AddressAutocomplete
+        onSelectAddress={(selected: SelectedAddressData) => {
+          setForm({
+            ...form,
+            province: selected.province || form.province,
+            district: selected.district || form.district,
+            ward: selected.ward || form.ward,
+            detail: selected.detail || form.detail,
+          })
+        }}
+        disabled={saving}
+      />
       <div className="grid gap-3 sm:grid-cols-2">
         <input
           required

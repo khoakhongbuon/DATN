@@ -40,6 +40,8 @@ export type BuildRequirements = {
   requestedRoles?: BuildRole[]
   excludedRoles?: BuildRole[]
   ownedComponents?: OwnedBuildComponent[]
+  requiredCpuModel?: string
+  requiredGpuModel?: string
 }
 
 export type BuildLine = {
@@ -64,6 +66,8 @@ export type BuildAlternative = {
   totalPayable: number
   totalSavings: number
   remainingBudget: number
+  label?: string
+  notes?: string
 }
 
 export type BuildRecommendation = {
@@ -82,6 +86,9 @@ export type BuildRecommendation = {
   warnings: string[]
   alternatives: BuildAlternative[]
   clarificationQuestion?: string
+  requiredCpuMatched?: boolean
+  requiredCpuMessage?: string
+  budgetExplanation?: string
 }
 
 export type BuildDependencies = {
@@ -92,9 +99,9 @@ export type BuildDependencies = {
   evaluateCompatibility?: (products: CompatibilityCandidate[]) => CompatibilityResult
 }
 
-const MAX_DATABASE_CANDIDATES_PER_ROLE = 48
-const MAX_CANDIDATES_PER_ROLE = 12
-const MAX_BUILD_STATES = 64
+const MAX_DATABASE_CANDIDATES_PER_ROLE = 120
+const MAX_CANDIDATES_PER_ROLE = 18
+const MAX_BUILD_STATES = 96
 const CORE_ROLES: BuildRole[] = ['CPU', 'MAINBOARD', 'RAM', 'STORAGE', 'PSU', 'CASE']
 const PERIPHERAL_ROLES: BuildRole[] = ['MONITOR', 'KEYBOARD', 'MOUSE']
 const DIRECT_ROLE_NAMES = new Set<BuildRole>([
@@ -143,6 +150,26 @@ function normalizeText(value: unknown): string {
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim()
+}
+
+export function matchesModel(candidate: { name: string; sku?: string }, requestedModel?: string): boolean {
+  if (!requestedModel || !requestedModel.trim()) return false
+  const normCandidate = normalizeText(candidate.name)
+  const normSku = normalizeText(candidate.sku)
+  const normRequested = normalizeText(requestedModel)
+
+  if (normCandidate.includes(normRequested) || normSku.includes(normRequested)) return true
+
+  const tokens = normRequested.split(/\s+/).filter((t) => t.length >= 2)
+  if (tokens.length > 0 && tokens.every((token) => normCandidate.includes(token) || normSku.includes(token))) {
+    return true
+  }
+  const keyIdentifier = requestedModel.match(/\b([0-9]{4,5}[a-zA-Z]*|[0-9]{3,4}\s*ti|[0-9]{3,4}\s*super)\b/i)
+  if (keyIdentifier) {
+    const keyNorm = normalizeText(keyIdentifier[0])
+    if (normCandidate.includes(keyNorm) || normSku.includes(keyNorm)) return true
+  }
+  return false
 }
 
 function specificationValue(
@@ -271,23 +298,33 @@ function candidateUtility(product: BuildCandidate, requirements: BuildRequiremen
   let capability = 1
   switch (product.role) {
     case 'CPU':
-      capability += numberSpec('cores') * 2 + numberSpec('threads') + numberSpec('boostClock') * 2
+      capability += numberSpec('cores') * 4 + numberSpec('threads') * 2 + numberSpec('boostClock') * 3
       break
     case 'GPU':
-      capability += numberSpec('vram') * 4 + numberSpec('powerConsumption') / 100
+      capability += numberSpec('vram') * 10 + numberSpec('powerConsumption') / 4
       break
     case 'RAM':
-      capability += numberSpec('capacity') * 2 + numberSpec('speed') / 1000
+      capability += numberSpec('capacity') * 3 + numberSpec('speed') / 1000
       break
     case 'STORAGE':
-      capability += numberSpec('capacityGB') / 1000
+      capability += numberSpec('capacityGB') / 200
       if (normalizeText(specificationValue(product, 'storageInterface')).includes('nvme')) {
-        capability += 2
+        capability += 6
       }
+      break
+    case 'MAINBOARD':
+      if (specificationValue(product, 'pcieVersion')?.toString().includes('5.0')) capability += 6
+      else if (specificationValue(product, 'pcieVersion')?.toString().includes('4.0')) capability += 3
+      break
+    case 'PSU':
+      capability += numberSpec('wattage') / 80
+      break
+    case 'COOLER':
+      capability += numberSpec('height') / 20
       break
     case 'MONITOR': {
       const extra = specificationValue(product, 'extra')
-      if (extra && typeof extra === 'object' && 'resolution' in extra) capability += 1
+      if (extra && typeof extra === 'object' && 'resolution' in extra) capability += 2
       break
     }
     default:
@@ -297,12 +334,21 @@ function candidateUtility(product: BuildCandidate, requirements: BuildRequiremen
   const useCase = normalizeText(requirements.useCase)
   let roleWeight = requirements.prioritizedRoles?.includes(product.role) ? 2 : 1
   if (product.role === 'GPU' && /\b(gaming|graphics|do hoa|choi game)\b/.test(useCase)) {
+    roleWeight *= 2.5
+  }
+  if (product.role === 'CPU' && (useCase.includes('programming') || useCase.includes('gaming'))) {
     roleWeight *= 1.5
   }
-  if (product.role === 'CPU' && useCase.includes('programming')) roleWeight *= 1.25
-  const priceFactor = Math.sqrt(Math.max(productPrice(product), 100000) / 1000000)
 
-  return (capability * roleWeight) / priceFactor
+  let modelMatchBonus = 0
+  if (product.role === 'CPU' && requirements.requiredCpuModel && matchesModel(product, requirements.requiredCpuModel)) {
+    modelMatchBonus = 50000
+  }
+  if (product.role === 'GPU' && requirements.requiredGpuModel && matchesModel(product, requirements.requiredGpuModel)) {
+    modelMatchBonus = 50000
+  }
+
+  return (capability * roleWeight) + modelMatchBonus
 }
 
 function validPurchaseCandidate(product: BuildCandidate): boolean {
@@ -312,21 +358,85 @@ function validPurchaseCandidate(product: BuildCandidate): boolean {
 function shortlistCandidates(
   candidates: BuildCandidate[],
   requirements: BuildRequirements,
+  currentStates: BuildState[] = [],
 ): BuildCandidate[] {
-  const valid = candidates
-    .filter(validPurchaseCandidate)
-    .sort((left, right) =>
-      candidateUtility(right, requirements) - candidateUtility(left, requirements),
-    )
-  const highUtility = valid.slice(0, Math.ceil(MAX_CANDIDATES_PER_ROLE / 2))
-  const lowestPrice = [...valid].sort((left, right) => productPrice(left) - productPrice(right))
-  const unique = new Map<string, BuildCandidate>()
+  const valid = candidates.filter(validPurchaseCandidate)
+  if (valid.length <= MAX_CANDIDATES_PER_ROLE) return valid
 
-  for (const product of [...highUtility, ...lowestPrice]) {
-    if (unique.size >= MAX_CANDIDATES_PER_ROLE) break
-    unique.set(product.id, product)
+  const selected = new Map<string, BuildCandidate>()
+
+  // 1. Required model match first
+  for (const candidate of valid) {
+    if (candidate.role === 'CPU' && requirements.requiredCpuModel && matchesModel(candidate, requirements.requiredCpuModel)) {
+      selected.set(candidate.id, candidate)
+    }
+    if (candidate.role === 'GPU' && requirements.requiredGpuModel && matchesModel(candidate, requirements.requiredGpuModel)) {
+      selected.set(candidate.id, candidate)
+    }
   }
-  return [...unique.values()]
+
+  // 2. Mainboard socket awareness
+  if (valid[0]?.role === 'MAINBOARD' && currentStates.length > 0) {
+    const activeSockets = new Set<string>()
+    for (const state of currentStates) {
+      const cpu = state.products.find((p) => p.role === 'CPU')
+      if (cpu) {
+        const socket = specificationValue(cpu, 'socket')
+        if (typeof socket === 'string' && socket.trim()) activeSockets.add(socket.trim().toUpperCase())
+      }
+    }
+    for (const socket of activeSockets) {
+      const socketMbs = valid.filter((mb) => {
+        const mbSocket = specificationValue(mb, 'socket')
+        return typeof mbSocket === 'string' && mbSocket.trim().toUpperCase() === socket
+      })
+      const sortedByCap = [...socketMbs].sort((a, b) => candidateUtility(b, requirements) - candidateUtility(a, requirements))
+      const sortedByPrice = [...socketMbs].sort((a, b) => productPrice(a) - productPrice(b))
+      for (const mb of [...sortedByCap.slice(0, 3), ...sortedByPrice.slice(0, 3)]) {
+        selected.set(mb.id, mb)
+      }
+    }
+  }
+
+  // 3. RAM type awareness
+  if (valid[0]?.role === 'RAM' && currentStates.length > 0) {
+    const activeRamTypes = new Set<string>()
+    for (const state of currentStates) {
+      const mb = state.products.find((p) => p.role === 'MAINBOARD')
+      if (mb) {
+        const ramType = specificationValue(mb, 'ramType')
+        if (typeof ramType === 'string' && ramType.trim()) activeRamTypes.add(ramType.trim().toUpperCase())
+      }
+    }
+    for (const ramType of activeRamTypes) {
+      const typeRams = valid.filter((ram) => {
+        const type = specificationValue(ram, 'type')
+        return typeof type === 'string' && type.trim().toUpperCase().includes(ramType)
+      })
+      const sortedByCap = [...typeRams].sort((a, b) => candidateUtility(b, requirements) - candidateUtility(a, requirements))
+      const sortedByPrice = [...typeRams].sort((a, b) => productPrice(a) - productPrice(b))
+      for (const r of [...sortedByCap.slice(0, 3), ...sortedByPrice.slice(0, 3)]) {
+        selected.set(r.id, r)
+      }
+    }
+  }
+
+  // 4. Affordable and high capability candidates
+  const affordable = valid.filter((c) => productPrice(c) <= requirements.budgetVnd)
+  const byCap = [...(affordable.length > 0 ? affordable : valid)].sort(
+    (left, right) => candidateUtility(right, requirements) - candidateUtility(left, requirements),
+  )
+  for (const product of byCap) {
+    if (selected.size >= 12) break
+    selected.set(product.id, product)
+  }
+  const byPrice = [...valid].sort((left, right) => productPrice(left) - productPrice(right))
+  for (const product of byPrice) {
+    if (selected.size >= MAX_CANDIDATES_PER_ROLE) break
+    selected.set(product.id, product)
+  }
+
+  return [...selected.values()]
 }
 
 function isCoreCompatibilityRole(role: BuildRole): boolean {
@@ -337,16 +447,54 @@ type BuildState = {
   products: BuildCandidate[]
   score: number
   payable: number
+  hasRequiredCpu: boolean
 }
 
-function pruneStates(states: BuildState[]): BuildState[] {
-  const byScore = [...states].sort((left, right) => right.score - left.score)
-  const byCost = [...states].sort((left, right) => left.payable - right.payable)
+function pruneStates(
+  states: BuildState[],
+  budgetVnd?: number,
+  hasRequiredCpuReq: boolean = false,
+): BuildState[] {
+  const budget = budgetVnd ?? Infinity
+  const withinBudget = states.filter((s) => s.payable <= budget)
+  const overBudget = states.filter((s) => s.payable > budget)
+
+  const scoreSort = (a: BuildState, b: BuildState) => {
+    if (hasRequiredCpuReq && a.hasRequiredCpu !== b.hasRequiredCpu) {
+      return a.hasRequiredCpu ? -1 : 1
+    }
+    return b.score - a.score || b.payable - a.payable
+  }
+
+  const overBudgetSort = (a: BuildState, b: BuildState) => {
+    if (hasRequiredCpuReq && a.hasRequiredCpu !== b.hasRequiredCpu) {
+      return a.hasRequiredCpu ? -1 : 1
+    }
+    return a.payable - b.payable || b.score - a.score
+  }
+
   const retained = new Map<string, BuildState>()
 
-  for (const state of [...byScore.slice(0, 48), ...byCost.slice(0, 16)]) {
-    retained.set(state.products.map(({ id }) => id).sort().join('|'), state)
+  const sortedWithin = [...withinBudget].sort(scoreSort)
+  for (const s of sortedWithin) {
+    const key = s.products.map((p) => p.id).sort().join('|')
+    retained.set(key, s)
+    if (retained.size >= 64) break
+  }
+
+  const sortedOver = [...overBudget].sort(overBudgetSort)
+  for (const s of sortedOver) {
+    const key = s.products.map((p) => p.id).sort().join('|')
+    retained.set(key, s)
     if (retained.size >= MAX_BUILD_STATES) break
+  }
+
+  if (retained.size === 0) {
+    for (const s of [...states].sort(scoreSort)) {
+      const key = s.products.map((p) => p.id).sort().join('|')
+      retained.set(key, s)
+      if (retained.size >= MAX_BUILD_STATES) break
+    }
   }
 
   return [...retained.values()]
@@ -644,6 +792,25 @@ export async function recommendBuild(
     )
   }
 
+  const hasCpuRequirement = Boolean(requirements.requiredCpuModel)
+  let requiredCpuFoundInCatalog = false
+  if (requirements.requiredCpuModel) {
+    requiredCpuFoundInCatalog = uniqueCandidates.some((c) =>
+      c.role === 'CPU' && validPurchaseCandidate(c) && matchesModel(c, requirements.requiredCpuModel),
+    )
+    if (!requiredCpuFoundInCatalog) {
+      return createResult(
+        'insufficient_catalog',
+        requirements.budgetVnd,
+        [],
+        ownedIds,
+        ['CPU'],
+        [`Không tìm thấy sản phẩm CPU phù hợp với yêu cầu "${requirements.requiredCpuModel}" còn hàng trong catalog.`],
+        [],
+      )
+    }
+  }
+
   const selectedOwned = [...ownedByRole.values()]
   const searchRoles = roles
     .filter((role) => !ownedByRole.has(role))
@@ -659,13 +826,19 @@ export async function recommendBuild(
     products: selectedOwned,
     score: selectedOwned.reduce((sum, product) => sum + candidateUtility(product, requirements), 0),
     payable: 0,
+    hasRequiredCpu: selectedOwned.some((p) => p.role === 'CPU' && requirements.requiredCpuModel && matchesModel(p, requirements.requiredCpuModel)),
   }]
   let lastCompatibilityErrors: string[] = []
 
   for (const role of searchRoles) {
+    let poolForRole = uniqueCandidates.filter((candidate) => candidate.role === role)
+    if (role === 'CPU' && requirements.requiredCpuModel && requiredCpuFoundInCatalog) {
+      poolForRole = poolForRole.filter((c) => matchesModel(c, requirements.requiredCpuModel))
+    }
     const roleCandidates = shortlistCandidates(
-      uniqueCandidates.filter((candidate) => candidate.role === role),
+      poolForRole,
       requirements,
+      states,
     )
     const nextStates: BuildState[] = []
 
@@ -678,10 +851,14 @@ export async function recommendBuild(
           lastCompatibilityErrors = compatibility.errors
           continue
         }
+        const isMatch = candidate.role === 'CPU' && requirements.requiredCpuModel
+          ? matchesModel(candidate, requirements.requiredCpuModel)
+          : false
         nextStates.push({
           products,
           score: state.score + candidateUtility(candidate, requirements),
           payable: statePayable(products, ownedIds),
+          hasRequiredCpu: state.hasRequiredCpu || isMatch,
         })
       }
     }
@@ -699,7 +876,7 @@ export async function recommendBuild(
         [],
       )
     }
-    states = pruneStates(nextStates)
+    states = pruneStates(nextStates, requirements.budgetVnd, hasCpuRequirement)
   }
 
   const completeStates = states
@@ -707,13 +884,29 @@ export async function recommendBuild(
       state.products.some((product) => product.role === role),
     ))
   const withinBudgetStates = completeStates.filter((state) => state.payable <= requirements.budgetVnd)
-  const chosen = withinBudgetStates.length > 0
-    ? withinBudgetStates.sort((left, right) =>
-      right.score - left.score || left.payable - right.payable,
-    )[0]
-    : completeStates.sort((left, right) =>
-      left.payable - right.payable || right.score - left.score,
-    )[0]
+
+  let chosen: BuildState | undefined
+  if (hasCpuRequirement && requiredCpuFoundInCatalog) {
+    const matchedWithin = withinBudgetStates.filter((s) => s.hasRequiredCpu)
+    if (matchedWithin.length > 0) {
+      chosen = matchedWithin.sort((a, b) => b.score - a.score || b.payable - a.payable)[0]
+    } else {
+      const matchedOver = completeStates.filter((s) => s.hasRequiredCpu)
+      if (matchedOver.length > 0) {
+        chosen = matchedOver.sort((a, b) => a.payable - b.payable || b.score - a.score)[0]
+      }
+    }
+  }
+
+  if (!chosen) {
+    chosen = withinBudgetStates.length > 0
+      ? withinBudgetStates.sort((left, right) =>
+        right.score - left.score || left.payable - right.payable,
+      )[0]
+      : completeStates.sort((left, right) =>
+        left.payable - right.payable || right.score - left.score,
+      )[0]
+  }
 
   if (!chosen) {
     return createResult(
@@ -732,15 +925,37 @@ export async function recommendBuild(
   const compatibility = evaluateState(chosen.products, evaluate)
   const notes = getCompatibilityNotes(chosen.products, compatibility)
   const status = chosen.payable <= requirements.budgetVnd ? 'recommended' : 'over_budget'
-  const alternatives = withinBudgetStates
+
+  const customWarnings = [...notes.warnings]
+  if (requirements.requiredCpuModel && !requiredCpuFoundInCatalog) {
+    customWarnings.unshift(
+      `Không tìm thấy CPU "${requirements.requiredCpuModel}" còn hàng trong catalog. Đề xuất phương án thay thế:`,
+    )
+  } else if (requirements.requiredCpuModel && status === 'over_budget') {
+    customWarnings.unshift(
+      `Cấu hình yêu cầu CPU ${requirements.requiredCpuModel} có chi phí thấp nhất từ catalog là ${chosen.payable.toLocaleString()} đ (vượt ${(chosen.payable - requirements.budgetVnd).toLocaleString()} đ so với ngân sách ${requirements.budgetVnd.toLocaleString()} đ). Dưới đây là phương án thay thế trong ngân sách:`,
+    )
+  }
+
+  let budgetExplanation: string | undefined
+  const remainingBudget = Math.max(0, requirements.budgetVnd - chosen.payable)
+  if (status === 'recommended' && remainingBudget >= 2000000) {
+    budgetExplanation = `Cấu hình đã được tối ưu hiệu năng tốt nhất với các linh kiện tương thích hiện có trong catalog. Ngân sách còn dư ${remainingBudget.toLocaleString()} đ có thể dùng để nâng cấp thêm dung lượng ổ cứng NVMe, nâng RAM 64GB hoặc sắm thêm màn hình/gaming gear.`
+  }
+
+  const alternativeStates = withinBudgetStates
     .filter((state) => state !== chosen && state.products.some((product, index) =>
       product.id !== chosen.products[index]?.id,
     ))
     .sort((left, right) => right.score - left.score)
-    .slice(0, 1)
+    .slice(0, 2)
     .map((state) => {
       const items = state.products.map((product) => makeLine(product, ownedIds.has(product.id)))
-      return { items, ...summarizeBuild(items, requirements.budgetVnd) }
+      return {
+        items,
+        ...summarizeBuild(items, requirements.budgetVnd),
+        label: 'phương án thay thế',
+      }
     })
 
   return {
@@ -750,10 +965,12 @@ export async function recommendBuild(
       chosen.products,
       ownedIds,
       [],
-      notes.warnings,
+      customWarnings,
       notes.unverified,
     ),
     verified: notes.verified,
-    alternatives,
+    alternatives: alternativeStates,
+    requiredCpuMatched: hasCpuRequirement ? chosen.hasRequiredCpu : undefined,
+    budgetExplanation,
   }
 }

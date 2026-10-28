@@ -257,6 +257,157 @@ test('uses salePrice as the only discount source when no eligible catalog promot
   assert.equal(result.totalSavings, 100000)
 })
 
+function realisticCatalog(): BuildCandidate[] {
+  return [
+    candidate('CPU', 'cpu-9600x', 7500000, {
+      socket: 'AM5', cores: 6, threads: 12, boostClock: 5.4, tdp: 65,
+    }, { name: 'AMD Ryzen 5 9600X' }),
+    candidate('CPU', 'cpu-13500', 5800000, {
+      socket: 'LGA1700', cores: 14, threads: 20, boostClock: 4.8, tdp: 65,
+    }, { name: 'Intel Core i5-13500' }),
+    candidate('MAINBOARD', 'mb-am5', 3200000, {
+      socket: 'AM5', ramType: 'DDR5', ramSlots: 4, maxRam: 128, pcieVersion: 'PCIe 4.0',
+    }, { name: 'Mainboard ASUS TUF Gaming B650M AM5' }),
+    candidate('MAINBOARD', 'mb-lga1700', 2500000, {
+      socket: 'LGA1700', ramType: 'DDR4', ramSlots: 4, maxRam: 128, pcieVersion: 'PCIe 4.0',
+    }, { name: 'Mainboard ASUS Prime B760M LGA1700' }),
+    candidate('RAM', 'ram-ddr5-32', 2500000, {
+      type: 'DDR5', capacity: 32, modules: 2, speed: 6000,
+    }, { name: 'RAM Kingston Fury Beast 32GB DDR5 6000MHz' }),
+    candidate('RAM', 'ram-ddr4-16', 900000, {
+      type: 'DDR4', capacity: 16, modules: 2, speed: 3200,
+    }, { name: 'RAM Kingston Fury Beast 16GB DDR4 3200MHz' }),
+    candidate('STORAGE', 'ssd-nvme-1tb', 1800000, {
+      capacityGB: 1000, storageInterface: 'NVMe',
+    }, { name: 'SSD Samsung 980 1TB NVMe' }),
+    candidate('GPU', 'gpu-4060', 7800000, {
+      chipset: 'RTX 4060', vram: 8, length: 240, powerConsumption: 115, interface: 'PCIe 4.0',
+    }, { name: 'VGA MSI GeForce RTX 4060 Ventus 8GB' }),
+    candidate('GPU', 'gpu-4070ti-super', 24000000, {
+      chipset: 'RTX 4070 Ti SUPER', vram: 16, length: 305, powerConsumption: 285, interface: 'PCIe 4.0',
+    }, { name: 'VGA ASUS TUF Gaming RTX 4070 Ti SUPER 16GB' }),
+    candidate('PSU', 'psu-650w', 1200000, {
+      wattage: 650, connectors: '8-pin',
+    }, { name: 'Nguồn Cooler Master 650W 80 Plus Bronze' }),
+    candidate('PSU', 'psu-850w', 3000000, {
+      wattage: 850, connectors: '16-pin 12VHPWR',
+    }, { name: 'Nguồn Corsair RM850e 850W Gold' }),
+    candidate('CASE', 'case-mid', 1000000, {
+      gpuClearance: 360, cpuCoolerClearance: 165,
+    }, { name: 'Vỏ Case Xigmatek Gaming' }),
+    candidate('COOLER', 'cooler-air', 500000, {
+      height: 155,
+    }, { name: 'Tản nhiệt Thermalright Assassin King' }),
+    candidate('MONITOR', 'mon-24', 2500000, {}, { name: 'Màn hình ASUS 24 inch IPS' }),
+    candidate('KEYBOARD', 'kb-mech', 400000, {}, { name: 'Bàn phím cơ DareU' }),
+    candidate('MOUSE', 'mouse-opt', 200000, {}, { name: 'Chuột Logitech G102' }),
+  ]
+}
+
+test('selects Ryzen 5 9600X and never switches to i5-13500 when requiredCpuModel is 9600X', async () => {
+  const result = await recommendBuild(
+    requirements({
+      budgetVnd: 20000000,
+      useCase: 'office',
+      requiredCpuModel: 'Ryzen 5 9600X',
+      excludedRoles: ['MONITOR', 'KEYBOARD', 'MOUSE'],
+    }),
+    dependencies(realisticCatalog()),
+  )
+
+  assert.equal(result.status, 'recommended')
+  const selectedCpu = result.items.find((item) => item.role === 'CPU')
+  assert.equal(selectedCpu?.id, 'cpu-9600x')
+  assert.equal(selectedCpu?.name, 'AMD Ryzen 5 9600X')
+  assert.ok(result.totalPayable <= 20000000)
+  // Ensure compatible AM5 motherboard and DDR5 RAM were picked
+  const selectedMb = result.items.find((item) => item.role === 'MAINBOARD')
+  assert.equal(selectedMb?.id, 'mb-am5')
+  const selectedRam = result.items.find((item) => item.role === 'RAM')
+  assert.equal(selectedRam?.id, 'ram-ddr5-32')
+})
+
+test('optimizes performance within 50M budget with required Ryzen 5 9600X without leaving massive unspent budget', async () => {
+  const result = await recommendBuild(
+    requirements({
+      budgetVnd: 50000000,
+      useCase: 'gaming',
+      requiredCpuModel: 'Ryzen 5 9600X',
+    }),
+    dependencies(realisticCatalog()),
+  )
+
+  assert.equal(result.status, 'recommended')
+  assert.equal(result.withinBudget, true)
+  const selectedCpu = result.items.find((item) => item.role === 'CPU')
+  assert.equal(selectedCpu?.id, 'cpu-9600x')
+  // Should select the powerful RTX 4070 Ti SUPER
+  const selectedGpu = result.items.find((item) => item.role === 'GPU')
+  assert.equal(selectedGpu?.id, 'gpu-4070ti-super')
+  // Total payable should be substantially utilizing the budget (> 40M VND), not cheaping out
+  assert.ok(result.totalPayable >= 40000000, `Expected >= 40M payable, got ${result.totalPayable}`)
+  assert.ok(result.totalPayable <= 50000000, `Expected <= 50M payable, got ${result.totalPayable}`)
+  assert.equal(result.remainingBudget, 50000000 - result.totalPayable)
+})
+
+test('reports over_budget with exact deficit when required CPU configuration exceeds 20M gaming budget', async () => {
+  // If gaming with discrete GPU + peripherals exceeds 20M with 9600X
+  const result = await recommendBuild(
+    requirements({
+      budgetVnd: 20000000,
+      useCase: 'gaming',
+      requiredCpuModel: 'Ryzen 5 9600X',
+    }),
+    dependencies(realisticCatalog()),
+  )
+
+  assert.equal(result.status, 'over_budget')
+  assert.equal(result.withinBudget, false)
+  const selectedCpu = result.items.find((item) => item.role === 'CPU')
+  assert.equal(selectedCpu?.id, 'cpu-9600x')
+  assert.ok(result.deficit > 0)
+  assert.equal(result.totalPayable - 20000000, result.deficit)
+})
+
+test('reports insufficient_catalog when required CPU does not exist in catalog', async () => {
+  const result = await recommendBuild(
+    requirements({
+      budgetVnd: 50000000,
+      requiredCpuModel: 'Ryzen 9 9999X NonExistent',
+    }),
+    dependencies(realisticCatalog()),
+  )
+
+  assert.equal(result.status, 'insufficient_catalog')
+  assert.ok(result.missingRoles.includes('CPU'))
+})
+
+test('reports no_compatible_build when AM5 CPU has no matching socket motherboard in catalog', async () => {
+  const incompatibleCatalog = realisticCatalog().filter((c) => c.id !== 'mb-am5')
+  const result = await recommendBuild(
+    requirements({
+      budgetVnd: 50000000,
+      requiredCpuModel: 'Ryzen 5 9600X',
+    }),
+    dependencies(incompatibleCatalog),
+  )
+
+  assert.equal(result.status, 'no_compatible_build')
+  assert.ok(result.warnings.some((w) => w.toLowerCase().includes('socket')))
+})
+
+test('handles candidate with null price or negative price safely', async () => {
+  const badPriceCatalog = realisticCatalog().map((c) =>
+    c.id === 'cpu-9600x' ? { ...c, price: null as unknown as number } : c,
+  )
+  const result = await recommendBuild(
+    requirements({ requiredCpuModel: 'Ryzen 5 9600X' }),
+    dependencies(badPriceCatalog),
+  )
+
+  assert.equal(result.status, 'insufficient_catalog')
+})
+
 after(() => {
   if (originalDatabaseUrl === undefined) {
     delete process.env.DATABASE_URL

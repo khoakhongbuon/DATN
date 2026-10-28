@@ -30,13 +30,27 @@ export function getMomoConfig(): MomoConfig {
     }
   }
 
+  const momoEnv = (process.env.MOMO_ENV || 'sandbox').trim().toLowerCase()
+  const defaultEndpoint = momoEnv === 'production'
+    ? 'https://payment.momo.vn/v2/gateway/api/create'
+    : 'https://test-payment.momo.vn/v2/gateway/api/create'
+
+  const isProd = process.env.NODE_ENV === 'production'
+  const defaultReturnUrl = isProd
+    ? 'https://pc-store-datn.vercel.app/orders/payment/momo-return'
+    : 'http://localhost:3000/orders/payment/momo-return'
+
+  const defaultIpnUrl = isProd
+    ? 'https://datn-cl03.onrender.com/api/payments/momo/ipn'
+    : 'http://localhost:4000/api/payments/momo/ipn'
+
   return {
     partnerCode,
     accessKey,
     secretKey,
-    endpoint: process.env.MOMO_ENDPOINT?.trim() || 'https://test-payment.momo.vn/v2/gateway/api/create',
-    returnUrl: process.env.MOMO_RETURN_URL?.trim() || 'http://localhost:3000/orders/payment/momo-return',
-    ipnUrl: process.env.MOMO_IPN_URL?.trim() || 'http://localhost:4000/api/payments/momo/ipn',
+    endpoint: process.env.MOMO_ENDPOINT?.trim() || defaultEndpoint,
+    returnUrl: process.env.MOMO_RETURN_URL?.trim() || defaultReturnUrl,
+    ipnUrl: process.env.MOMO_IPN_URL?.trim() || defaultIpnUrl,
   }
 }
 
@@ -127,13 +141,18 @@ export type MomoCreatePaymentResult = {
   deeplink?: string
 }
 
-export async function createMomoPayment(params: {
-  paymentId: string
-  orderCode: string
-  amount: number
-  returnUrl?: string
-  ipnUrl?: string
-}): Promise<MomoCreatePaymentResult> {
+export type MomoFetchFn = (url: string, init?: RequestInit) => Promise<Response>
+
+export async function createMomoPayment(
+  params: {
+    paymentId: string
+    orderCode: string
+    amount: number
+    returnUrl?: string
+    ipnUrl?: string
+  },
+  fetchFn: MomoFetchFn = fetch,
+): Promise<MomoCreatePaymentResult> {
   const config = getMomoConfig()
   const requestId = `${params.paymentId}_${Date.now()}`
   const orderId = params.paymentId
@@ -173,7 +192,7 @@ export async function createMomoPayment(params: {
     signature,
   }
 
-  const response = await fetch(config.endpoint, {
+  const response = await fetchFn(config.endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -202,7 +221,10 @@ export async function createMomoPayment(params: {
   return result
 }
 
-export async function processMomoIpn(body: Record<string, any>) {
+export async function processMomoIpn(
+  body: Record<string, any>,
+  db: typeof prisma = prisma,
+) {
   const config = getMomoConfig()
 
   // 1. Verify signature
@@ -217,13 +239,13 @@ export async function processMomoIpn(body: Record<string, any>) {
   }
 
   // 2. Find payment & order
-  let payment = await prisma.payment.findUnique({
+  let payment = await db.payment.findUnique({
     where: { id: orderId },
     include: { order: true },
   })
 
   if (!payment) {
-    payment = await prisma.payment.findFirst({
+    payment = await db.payment.findFirst({
       where: { order: { orderCode: orderId } },
       include: { order: true },
     })
@@ -252,7 +274,7 @@ export async function processMomoIpn(body: Record<string, any>) {
 
   // 5. Update DB
   if (resultCode === 0) {
-    await prisma.$transaction(async (tx) => {
+    await db.$transaction(async (tx: any) => {
       await tx.payment.update({
         where: { id: payment!.id },
         data: {
@@ -278,7 +300,7 @@ export async function processMomoIpn(body: Record<string, any>) {
 
   // Payment failed
   if (payment.status === PaymentStatus.PENDING) {
-    await prisma.payment.update({
+    await db.payment.update({
       where: { id: payment.id },
       data: {
         status: PaymentStatus.FAILED,
@@ -293,14 +315,17 @@ export async function processMomoIpn(body: Record<string, any>) {
   }
 }
 
-export async function verifyMomoReturn(query: Record<string, any>) {
+export async function verifyMomoReturn(
+  query: Record<string, any>,
+  db: typeof prisma = prisma,
+) {
   const config = getMomoConfig()
   const isValidSignature = verifyMomoSignature(query, config.accessKey, config.secretKey)
 
   const orderId = String(query.orderId || '')
   let payment = null
   if (orderId) {
-    payment = await prisma.payment.findFirst({
+    payment = await db.payment.findFirst({
       where: {
         OR: [{ id: orderId }, { order: { orderCode: orderId } }],
       },

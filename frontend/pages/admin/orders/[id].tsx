@@ -3,9 +3,7 @@ import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { AdminLayout } from '../../../components/admin/AdminLayout'
 import { useAuth } from '../../../lib/auth'
-import { apiFetch } from '../../../lib/cart'
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
+import { apiFetch, parseJsonResponse, API_BASE_URL } from '../../../lib/cart'
 
 type OrderItem = {
   id: string
@@ -161,11 +159,10 @@ export default function AdminOrderDetailPage() {
       setNotFound(false)
 
       try {
-        const orderResponse = await apiFetch(`/api/orders/${encodeURIComponent(orderId)}`, {
+        const orderResponse = await apiFetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(orderId)}`, {
           signal: controller.signal,
         })
 
-        const orderPayload = await orderResponse.json() as ApiPayload<Order>
         if (orderResponse.status === 401) {
           void router.replace(`/login?returnUrl=${encodeURIComponent(router.asPath)}`)
           return
@@ -174,6 +171,8 @@ export default function AdminOrderDetailPage() {
           setNotFound(true)
           return
         }
+
+        const orderPayload = await parseJsonResponse<ApiPayload<Order>>(orderResponse, 'Không thể tải chi tiết đơn hàng.')
         if (!orderResponse.ok || !orderPayload.data) {
           throw new Error(apiMessage(orderPayload, 'Không thể tải chi tiết đơn hàng.'))
         }
@@ -181,22 +180,24 @@ export default function AdminOrderDetailPage() {
         setOrder(orderPayload.data)
 
         try {
-          const paymentResponse = await apiFetch(`/api/orders/${encodeURIComponent(orderPayload.data.id)}/payment`, {
+          const paymentResponse = await apiFetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(orderPayload.data.id)}/payment`, {
             signal: controller.signal,
           })
 
-          const paymentPayload = await paymentResponse.json() as ApiPayload<Payment>
           if (paymentResponse.status === 401) {
             void router.replace(`/login?returnUrl=${encodeURIComponent(router.asPath)}`)
             return
           }
           if (paymentResponse.status === 404) {
             setPayment(null)
-          } else if (!paymentResponse.ok || !paymentPayload.data) {
-            setPaymentError(apiMessage(paymentPayload, 'Không thể tải trạng thái thanh toán.'))
-            setPayment(null)
           } else {
-            setPayment(paymentPayload.data)
+            const paymentPayload = await parseJsonResponse<ApiPayload<Payment>>(paymentResponse, 'Không thể tải trạng thái thanh toán.')
+            if (!paymentResponse.ok || !paymentPayload.data) {
+              setPaymentError(apiMessage(paymentPayload, 'Không thể tải trạng thái thanh toán.'))
+              setPayment(null)
+            } else {
+              setPayment(paymentPayload.data)
+            }
           }
         } catch (paymentLoadError) {
           if ((paymentLoadError as Error).name !== 'AbortError') {
@@ -227,14 +228,14 @@ export default function AdminOrderDetailPage() {
     setError('')
 
     try {
-      const response = await apiFetch(`/api/orders/${encodeURIComponent(order.id)}/cancel`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/cancel`, {
         method: 'PUT',
       })
-      const payload = await response.json() as ApiPayload<Order>
       if (response.status === 401) {
         void router.replace(`/login?returnUrl=${encodeURIComponent(router.asPath)}`)
         return
       }
+      const payload = await parseJsonResponse<ApiPayload<Order>>(response, 'Không thể hủy đơn hàng.')
       if (!response.ok || !payload.data) {
         throw new Error(apiMessage(payload, 'Không thể hủy đơn hàng.'))
       }
@@ -254,14 +255,14 @@ export default function AdminOrderDetailPage() {
     setPaymentError('')
 
     try {
-      const response = await apiFetch(`/api/orders/${encodeURIComponent(order.id)}/payment/cancel`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/payment/cancel`, {
         method: 'PUT',
       })
-      const payload = await response.json() as ApiPayload<Payment>
       if (response.status === 401) {
         void router.replace(`/login?returnUrl=${encodeURIComponent(router.asPath)}`)
         return
       }
+      const payload = await parseJsonResponse<ApiPayload<Payment>>(response, 'Không thể hủy thanh toán.')
       if (!response.ok || !payload.data) {
         throw new Error(apiMessage(payload, 'Không thể hủy thanh toán.'))
       }
@@ -278,7 +279,7 @@ export default function AdminOrderDetailPage() {
     setConfirmingPayment(true)
     setPaymentError('')
     try {
-      const response = await apiFetch(`/api/orders/${encodeURIComponent(order.id)}/payment/confirm`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(order.id)}/payment/confirm`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -287,11 +288,11 @@ export default function AdminOrderDetailPage() {
           transactionNote: confirmNote.trim() || undefined,
         }),
       })
-      const payload = await response.json() as { success?: boolean; data?: unknown; message?: string; error?: string }
       if (response.status === 401) {
         void router.replace(`/login?returnUrl=${encodeURIComponent(router.asPath)}`)
         return
       }
+      const payload = await parseJsonResponse<{ success?: boolean; data?: unknown; message?: string; error?: string }>(response, 'Không thể xác nhận thanh toán.')
       if (!response.ok || !payload.success) {
         throw new Error(payload.message || payload.error || 'Không thể xác nhận thanh toán.')
       }
