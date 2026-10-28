@@ -11,6 +11,8 @@
     "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:render:auth-migrate": "ts-node -T prisma/apply_auth_migration_render.ts",
+    "prisma:render:auth-rollback": "ts-node -T prisma/rollback_auth_migration_render.ts",
     "prisma:seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
